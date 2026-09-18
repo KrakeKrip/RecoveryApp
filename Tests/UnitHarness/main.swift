@@ -1,4 +1,5 @@
 import Foundation
+import RecoveryCore
 
 private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
     guard condition() else {
@@ -160,4 +161,35 @@ check(
     "технический код скрыт из основной ошибки"
 )
 
-print("PASS: 28 domain checks")
+do {
+    let emptyCommand = try CommandLineParser.parse([])
+    let helpCommand = try CommandLineParser.parse(["help"])
+    let versionText = try CommandLineParser.parse(["version"])
+    let versionJSON = try CommandLineParser.parse(["version", "--json"])
+    let drivesText = try CommandLineParser.parse(["drives", "list"])
+    let drivesJSON = try CommandLineParser.parse(["drives", "list", "--json"])
+    check(emptyCommand == .help, "пустой вызов CLI показывает справку")
+    check(helpCommand == .help, "help разбирается")
+    check(versionText == .version(json: false), "version разбирается")
+    check(versionJSON == .version(json: true), "version --json разбирается")
+    check(drivesText == .drivesList(json: false), "drives list разбирается")
+    check(drivesJSON == .drivesList(json: true), "drives list --json разбирается")
+} catch {
+    check(false, "валидные аргументы CLI не должны отклоняться")
+}
+
+private func expectUsageError(_ arguments: [String], _ message: String) {
+    do {
+        _ = try CommandLineParser.parse(arguments)
+        check(false, message)
+    } catch {
+        check(error is CLIUsageError, message)
+    }
+}
+expectUsageError(["заведомо-неизвестная"], "неизвестная команда CLI отклоняется")
+expectUsageError(["drives"], "drives без подкоманды отклоняется")
+expectUsageError(["drives", "show"], "неизвестная подкоманда drives отклоняется")
+expectUsageError(["version", "--yaml"], "неизвестный параметр CLI отклоняется")
+expectUsageError(["version", "лишний"], "лишний аргумент CLI отклоняется")
+
+print("PASS: 39 domain checks")

@@ -24,14 +24,37 @@ export SWIFTPM_MODULECACHE_OVERRIDE="$cache_dir/module-cache"
 build_args=(--disable-sandbox --scratch-path "$cache_dir" -c "$configuration" --arch "$arch")
 if [[ "$configuration" == "release" ]]; then
     mkdir -p "$cache_dir/release"
+    core_dir="$cache_dir/release"
+    # RecoveryCore — отдельный модуль, как в Package.swift, поэтому он собирается
+    # раньше и подключается через swiftmodule и статическую библиотеку.
     swiftc \
         -O \
         -parse-as-library \
         -sdk "$sdk_root" \
         -target "$arch-apple-macos14.0" \
+        -emit-module \
+        -emit-module-path "$core_dir/RecoveryCore.swiftmodule" \
+        -module-name RecoveryCore \
+        "$project_dir"/Sources/RecoveryCore/*.swift
+    swiftc \
+        -O \
+        -parse-as-library \
+        -sdk "$sdk_root" \
+        -target "$arch-apple-macos14.0" \
+        -emit-library -static \
+        -o "$core_dir/libRecoveryCore.a" \
+        "$project_dir"/Sources/RecoveryCore/*.swift
+    swiftc \
+        -O \
+        -parse-as-library \
+        -sdk "$sdk_root" \
+        -target "$arch-apple-macos14.0" \
+        -I "$core_dir" \
+        -L "$core_dir" \
+        -lRecoveryCore \
         "$project_dir"/Sources/RecoveryApp/*.swift \
-        -o "$cache_dir/release/RecoveryApp"
-    binary_path="$cache_dir/release/RecoveryApp"
+        -o "$core_dir/RecoveryApp"
+    binary_path="$core_dir/RecoveryApp"
 else
     swift build "${build_args[@]}"
     binary_path="$(swift build --disable-sandbox --scratch-path "$cache_dir" -c "$configuration" --arch "$arch" --show-bin-path)/RecoveryApp"

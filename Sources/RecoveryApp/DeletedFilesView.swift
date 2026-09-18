@@ -1,4 +1,5 @@
 import AppKit
+import RecoveryCore
 import SwiftUI
 import UniformTypeIdentifiers
 

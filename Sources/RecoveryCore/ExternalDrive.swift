@@ -1,22 +1,22 @@
 @preconcurrency import Foundation
 
-struct ExternalDrive: Identifiable, Hashable, Sendable {
-    let identifier: String
-    let name: String
-    let size: Int64
-    let connection: String
-    let mountPoints: [URL]
+public struct ExternalDrive: Identifiable, Hashable, Sendable {
+    public let identifier: String
+    public let name: String
+    public let size: Int64
+    public let connection: String
+    public let mountPoints: [URL]
 
-    var id: String { identifier }
-    var rawDevicePath: String { "/dev/r\(identifier)" }
+    public var id: String { identifier }
+    public var rawDevicePath: String { "/dev/r\(identifier)" }
 
-    var displayName: String {
+    public var displayName: String {
         let details = [name, Self.humanSize(size), connection]
             .filter { !$0.isEmpty }
         return details.joined(separator: " · ")
     }
 
-    static func humanSize(_ bytes: Int64) -> String {
+    public static func humanSize(_ bytes: Int64) -> String {
         let formatter = ByteCountFormatter()
         formatter.countStyle = .decimal
         formatter.allowedUnits = [.useGB, .useTB]
@@ -25,7 +25,7 @@ struct ExternalDrive: Identifiable, Hashable, Sendable {
         return formatter.string(fromByteCount: max(0, bytes))
     }
 
-    func contains(_ destination: URL) -> Bool {
+    public func contains(_ destination: URL) -> Bool {
         let destinationPath = destination.resolvingSymlinksInPath().standardizedFileURL.path
         return mountPoints.contains { mountPoint in
             let mountPath = mountPoint.resolvingSymlinksInPath().standardizedFileURL.path
@@ -34,11 +34,11 @@ struct ExternalDrive: Identifiable, Hashable, Sendable {
     }
 }
 
-enum ExternalDriveError: LocalizedError {
+public enum ExternalDriveError: LocalizedError {
     case unavailable(String)
     case invalidResponse
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .unavailable(let detail):
             "Не удалось получить список накопителей. \(detail)"
@@ -48,8 +48,8 @@ enum ExternalDriveError: LocalizedError {
     }
 }
 
-enum ExternalDriveParser {
-    static func drives(from data: Data) throws -> [ExternalDrive] {
+public enum ExternalDriveParser {
+    public static func drives(from data: Data) throws -> [ExternalDrive] {
         let propertyList = try PropertyListSerialization.propertyList(
             from: data,
             options: [],
@@ -104,8 +104,10 @@ enum ExternalDriveParser {
     }
 }
 
-final class ExternalDriveDiscovery: Sendable {
-    func load() async throws -> [ExternalDrive] {
+public final class ExternalDriveDiscovery: Sendable {
+    public init() {}
+
+    public func load() async throws -> [ExternalDrive] {
         try await Task.detached(priority: .userInitiated) {
             let process = Process()
             let output = Pipe()

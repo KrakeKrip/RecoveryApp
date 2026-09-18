@@ -4,7 +4,7 @@
 
 | Задача | Статус | Ветка | Назначение |
 |---|---|---|---|
-| TASK-001 | TODO | `glm/task-001-cli-foundation` | Общий RecoveryCore и минимальный CLI |
+| TASK-001 | REVIEW | `glm/task-001-cli-foundation` | Общий RecoveryCore и минимальный CLI |
 | TASK-002 | TODO | — | CLI быстрого поиска и исправление `/dev/fd/N` |
 | TASK-003 | TODO | — | CLI PhotoRec, прогресс и остановка |
 | TASK-004 | TODO | — | CLI восстановления видео |

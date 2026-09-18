@@ -1,5 +1,6 @@
 @preconcurrency import Foundation
 import Darwin
+import RecoveryCore
 import Security
 
 struct DeletedFileCandidate: Identifiable, Hashable, Sendable {
