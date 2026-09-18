@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>ru</string>
+    <key>CFBundleExecutable</key>
+    <string>RecoveryApp</string>
+    <key>CFBundleIdentifier</key>
+    <string>org.recoveryapp.mac</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>RecoveryApp</string>
+    <key>CFBundleIconFile</key>
+    <string>RecoveryApp</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2026 RecoveryApp contributors</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.utilities</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+	<string>0.8.1</string>
+    <key>CFBundleVersion</key>
+	<string>13</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
+    <key>UTImportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeDescription</key>
+            <string>Raw storage image</string>
+            <key>UTTypeIdentifier</key>
+            <string>org.recoveryapp.disk-image</string>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>img</string>
+                    <string>raw</string>
+                    <string>dd</string>
+                    <string>dmg</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
+</dict>
+</plist>

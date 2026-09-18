@@ -1,0 +1,98 @@
+# RecoveryApp
+
+Open-source приложение для macOS, которое безопасно восстанавливает повреждённые
+видео и удалённые файлы. В лабораторной версии 0.8 пользователь сразу видит
+главное меню, а подключённую флешку или карту памяти выбирает внутри раздела
+«Удалённые файлы». PhotoRec получает
+read-only доступ через системный `authopen`. Быстрый режим FAT32/exFAT ищет
+сохранившиеся имена через Sleuth Kit, а PhotoRec восстанавливает JPEG, PNG и
+MOV/MP4 без имён. Результат всегда направляется в отдельную папку.
+
+Код RecoveryApp распространяется по GNU GPL v2. Встроенный `untrunc` также
+распространяется по GPL v2; точные уведомления и исходники описаны в
+`ThirdParty/untrunc/`.
+
+## Требования
+
+- Apple Silicon Mac
+- macOS 14 или новее
+- Swift 6 / Xcode Command Line Tools
+
+## Сборка и проверка
+
+```bash
+./Scripts/test.sh
+./Scripts/test-video-repair.sh
+./Scripts/test-cancellation.sh
+./Scripts/test-deleted-recovery.sh
+./Scripts/test-photorec-jpeg.sh
+./Scripts/test-readonly-helper.sh
+./Scripts/test-metadata-helper.sh
+./Scripts/build-app.sh
+open ./dist/RecoveryApp.app
+```
+
+Если установлена предварительная версия Command Line Tools и её компилятор не
+совпадает с SDK по умолчанию, можно явно выбрать совместимый SDK:
+
+```bash
+RECOVERYAPP_SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk ./Scripts/test.sh
+RECOVERYAPP_SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk ./Scripts/build-app.sh
+```
+
+ZIP и SHA-256:
+
+```bash
+./Scripts/package-zip.sh
+SOURCE_ARCHIVE_NAME=RecoveryApp-source.zip ./Scripts/package-source.sh
+shasum -a 256 -c ./dist/RecoveryApp-arm64.zip.sha256
+```
+
+Установочный DMG для Apple Silicon:
+
+```bash
+./Scripts/package-dmg.sh
+```
+
+В образ входят `RecoveryApp.app`, ярлык «Программы» и русская инструкция первого
+запуска. Окно DMG использует фирменный фон, крупные значки и понятную стрелку
+перетаскивания. Пользователь перетаскивает приложение в «Программы», пытается
+открыть его и, если macOS блокирует запуск, выбирает «Системные настройки →
+Конфиденциальность и безопасность → Всё равно открыть». Отключать Gatekeeper
+целиком не требуется.
+
+Сборка сейчас подписывается локальной ad-hoc подписью. Её можно бесплатно
+передавать для ограниченного тестирования с ручным подтверждением первого
+запуска. Для массового распространения без такого предупреждения потребуются
+Developer ID, hardened runtime и нотариализация через Apple Developer аккаунт.
+
+## Важные ограничения текущей версии
+
+- `untrunc` встроен только в arm64-сборку; восстановление видео проверено пока
+  только на синтетическом H.264/AAC MP4 с удалённым атомом `moov`.
+- Подключённые физические накопители обнаруживаются автоматически. Их содержимое
+  читают только узкие helper-процессы через системный `authopen`; право запрашивает
+  сама RecoveryApp через Authorization Services, а Sleuth Kit и PhotoRec не
+  запускаются с root.
+- PhotoRec 7.2 со статическим libjpeg-turbo 3.2.0 встроен в GUI. Глубокий поиск
+  сохраняет JPEG, PNG и MOV/MP4 в отдельную папку, но не восстанавливает исходные
+  имена и структуру каталогов.
+- Инженерный аудит CPL/IPL допускает модель отдельных CLI/агрегата. Перед
+  бесплатной публичной публикацией нужно завершить лицензионный checklist:
+  приложить уведомления, лицензии и точные исходники поставленных компонентов.
+- В версии 0.8 сетевой обмен и телеметрия отключены; все операции выполняются
+  локально. Их возможное добавление отложено до готовности основных функций и
+  потребует отдельного понятного согласия без отправки содержимого файлов.
+- Быстрый read-only helper FAT32/exFAT подтверждён пока только на маленьких
+  синтетических образах с непрерывными и не перезаписанными файлами; физический
+  носитель ещё не проверен через GUI.
+- Read-only открытие и штатная остановка проверены на реальной флешке 125 ГБ.
+  Полный проход всего носителя и восстановление реальных фрагментированных файлов
+  пока не квалифицированы.
+
+Актуальная матрица готовности находится в [STATUS.md](STATUS.md), архитектура и
+порядок этапов — в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), доказательства
+видеотестов — в [docs/VIDEO_TESTS.md](docs/VIDEO_TESTS.md), результаты удалённых
+файлов — в [docs/DELETED_FILE_EXPERIMENTS.md](docs/DELETED_FILE_EXPERIMENTS.md),
+а лицензионное решение — в
+[docs/SLEUTH_KIT_LICENSE_AUDIT.md](docs/SLEUTH_KIT_LICENSE_AUDIT.md).

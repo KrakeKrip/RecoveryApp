@@ -1,0 +1,16 @@
+.build/
+dist/
+work/
+.DS_Store
+__pycache__/
+*.py[cod]
+outputs/.DS_Store
+outputs/*.dmg
+outputs/*.zip
+outputs/*SHA256SUMS.txt
+outputs/*test-report.md
+!outputs/ffmpeg-8.1-source.tar.xz
+!outputs/untrunc-9d86ec9-source.tar.gz
+!outputs/sleuthkit-4.15.0-source.tar.gz
+!outputs/testdisk-7.2-source.tar.bz2
+!outputs/libjpeg-turbo-3.2.0-source.tar.gz

@@ -1,0 +1,53 @@
+--- a/tsk/img/raw.c
++++ b/tsk/img/raw.c
+@@ -32,6 +32,29 @@
+ #include <fcntl.h>
+ #endif
+ 
++#ifndef TSK_WIN32
++/* macOS can deny open("/dev/fd/N") when N refers to a raw device that was
++ * authorized and opened by authopen. Reopening is unnecessary: duplicate
++ * the inherited, already read-only descriptor instead. */
++static int
++raw_open_readonly(const char *path)
++{
++    static const char prefix[] = "/dev/fd/";
++    char *end = NULL;
++    long inherited_fd;
++    if (strncmp(path, prefix, sizeof(prefix) - 1) == 0) {
++        inherited_fd = strtol(path + sizeof(prefix) - 1, &end, 10);
++        if (end != path + sizeof(prefix) - 1 && *end == '\0' &&
++            inherited_fd >= STDIN_FILENO && inherited_fd <= INT_MAX) {
++            return dup((int)inherited_fd);
++        }
++        errno = EINVAL;
++        return -1;
++    }
++    return open(path, O_RDONLY | O_BINARY);
++}
++#endif
++
+ #ifndef S_IFMT
+ #define S_IFMT __S_IFMT
+ #endif
+@@ -102,8 +125,7 @@ raw_read_segment(IMG_RAW_INFO * raw_info, int idx, char *buf,
+         }
+ 
+ #else
+-        if ((cimg->fd =
+-                open(raw_info->img_info.images[idx], O_RDONLY | O_BINARY)) < 0) {
++        if ((cimg->fd = raw_open_readonly(raw_info->img_info.images[idx])) < 0) {
+             cimg->fd = 0; /* so we don't close it next time */
+             tsk_error_reset();
+             tsk_error_set_errno(TSK_ERR_IMG_OPEN);
+@@ -114,6 +136,9 @@ raw_read_segment(IMG_RAW_INFO * raw_info, int idx, char *buf,
+ #endif
+         cimg->image = idx;
+-        cimg->seek_pos = 0;
++        /* /dev/fd/N duplicates an already-open description. Size discovery
++         * can move the shared offset before the first read, so always seek
++         * explicitly even when the requested offset is byte zero. */
++        cimg->seek_pos = -1;
+         raw_info->cptr[idx] = raw_info->next_slot;
+         if (++raw_info->next_slot == SPLIT_CACHE) {
+             raw_info->next_slot = 0;

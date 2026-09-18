@@ -1,0 +1,37 @@
+--- a/src/hdaccess.c
++++ b/src/hdaccess.c
+@@ -53,6 +53,7 @@
+ #endif
+ #include <stdio.h>
+ #include <errno.h>
++#include <limits.h>
+ #include "types.h"
+ #if defined(HAVE_LINUX_TYPES_H)
+ #include <linux/types.h>
+@@ -1737,6 +1738,26 @@
+     if((testdisk_mode&TESTDISK_O_DIRECT)==TESTDISK_O_DIRECT)
+       mode_basic|=O_DIRECT;
+ #endif
++#ifdef __APPLE__
++  if(strncmp(device, "/dev/fd/", 8)==0)
++  {
++    char *end=NULL;
++    long inherited_fd;
++    errno=0;
++    inherited_fd=strtol(device+8, &end, 10);
++    if(errno==0 && end!=device+8 && *end=='\0' &&
++        inherited_fd>=0 && inherited_fd<=INT_MAX)
++    {
++      hd_h=dup((int)inherited_fd);
++      if(hd_h>=0)
++      {
++        mode=O_RDONLY|mode_basic;
++        testdisk_mode&=~TESTDISK_O_RDWR;
++        try_readonly=0;
++      }
++    }
++  }
++#endif
+   if((testdisk_mode&TESTDISK_O_RDWR)==TESTDISK_O_RDWR)
+   {
+     mode=O_RDWR|O_EXCL|mode_basic;
