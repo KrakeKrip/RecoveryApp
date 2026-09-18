@@ -5,7 +5,7 @@
 | Задача | Статус | Ветка | Назначение |
 |---|---|---|---|
 | TASK-001 | DONE | `glm/task-001-cli-foundation` | Общий RecoveryCore и минимальный CLI |
-| TASK-002 | REVIEW | `glm/task-002-sleuthkit-fd` | Пересборка Sleuth Kit и регрессия унаследованного read-only FD |
+| TASK-002 | DONE | `glm/task-002-sleuthkit-fd` | Пересборка Sleuth Kit и регрессия унаследованного read-only FD |
 | TASK-003 | TODO | — | CLI быстрого поиска и восстановления через `fls`/`icat` |
 | TASK-004 | TODO | — | CLI PhotoRec, прогресс и остановка |
 | TASK-005 | TODO | — | CLI восстановления видео |
