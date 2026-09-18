@@ -41,6 +41,26 @@ struct QuickScanReport: Encodable {
     let candidates: [QuickCandidateReport]
 }
 
+struct DriveIdentityReport: Encodable {
+    let id: String
+    let name: String
+    let size: Int64
+    let rawDevicePath: String
+
+    init(_ drive: ExternalDrive) {
+        id = drive.identifier
+        name = drive.name
+        size = drive.size
+        rawDevicePath = drive.rawDevicePath
+    }
+}
+
+struct PhysicalQuickScanReport: Encodable {
+    let schemaVersion: Int
+    let drive: DriveIdentityReport
+    let candidates: [QuickCandidateReport]
+}
+
 struct QuickCandidateReport: Encodable {
     let inode: String
     let path: String
@@ -85,12 +105,20 @@ enum CommandLineHelp {
               Найти удалённые записи FAT32/exFAT в файле-образе, ничего не записывая
           recoveryapp-cli quick recover --image ФАЙЛ --output ПАПКА --all [--json]
               Повторно найти удалённые записи и восстановить их все в папку
+          recoveryapp-cli quick scan --drive diskN --expected-name ИМЯ --expected-size БАЙТЫ [--json]
+              Найти удалённые записи на внешнем накопителе только для чтения
+          recoveryapp-cli quick recover --drive diskN --expected-name ИМЯ --expected-size БАЙТЫ --output ПАПКА --all [--json]
+              Найти и восстановить все записи с накопителя в папку
+
+        --image и --drive взаимоисключающие. Для --drive система заново
+        обнаруживает накопитель и сверяет точные имя и размер до запроса
+        разрешения; одна команда создаёт не более одного системного запроса.
+        macOS может показать запрос пароля для read-only доступа.
+        Пароль CLI не принимает ни в каком виде.
 
         --json — машинночитаемый результат одной JSON-строкой в stdout.
         Пути встроенных инструментов mmls, fls и icat берутся из переменных
         окружения RECOVERYAPP_MMLS_PATH, RECOVERYAPP_FLS_PATH, RECOVERYAPP_ICAT_PATH.
-        Команды для образов читают только обычные файлы-образы и не обращаются
-        к физическим накопителям; пароль не запрашивается.
 
         Коды выхода: 0 — успех; 1 — ошибка выполнения; 2 — неверные аргументы.
         Диагностика и подсказки выводятся в stderr.
@@ -120,6 +148,14 @@ enum CommandLineHelp {
             "Параметр «\(option)» указан более одного раза."
         case .optionNotAllowed(let option, let command):
             "Параметр «\(option)» не применяется к команде «\(command)»."
+        case .conflictingOptions(let first, let second):
+            "Параметры «\(first)» и «\(second)» взаимоисключающие."
+        case .missingSourceOption:
+            "Укажите источник: --image ФАЙЛ или --drive diskN с ожидаемыми именем и размером."
+        case .invalidDriveIdentifier(let value):
+            "Идентификатор накопителя указывается как diskN без /dev/, получено «\(value)»."
+        case .invalidExpectedSize(let value):
+            "Ожидаемый размер должен быть положительным числом байтов, получено «\(value)»."
         }
     }
 }

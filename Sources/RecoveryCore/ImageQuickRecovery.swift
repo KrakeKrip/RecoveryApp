@@ -39,6 +39,7 @@ public struct DeletedFileCandidate: Identifiable, Hashable, Sendable {
 public enum DeletedFilesError: LocalizedError, Equatable {
     case imageMissing
     case imageNotRegularFile
+    case invalidDriveSource(String)
     case outputFolderMissing
     case outputFolderNotWritable
     case outputOnSource
@@ -60,6 +61,8 @@ public enum DeletedFilesError: LocalizedError, Equatable {
             "Выбранный образ больше недоступен."
         case .imageNotRegularFile:
             "Выбранный путь не является обычным файлом образа."
+        case .invalidDriveSource(let detail):
+            "Источник задан неверно: \(detail)."
         case .outputFolderMissing:
             "Папка результата больше недоступна."
         case .outputFolderNotWritable:

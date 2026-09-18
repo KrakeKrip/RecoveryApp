@@ -31,6 +31,8 @@ struct UserFacingFailure: Equatable {
             UserFacingFailure(title: "Источник исчез", message: "Выбранный образ больше недоступен. Выберите его заново.")
         case .imageNotRegularFile:
             UserFacingFailure(title: "Неверный источник", message: "Укажите обычный файл образа, а не папку или устройство.")
+        case .invalidDriveSource:
+            UserFacingFailure(title: "Неверный источник", message: "Проверьте идентификатор накопителя и ожидаемые имя и размер, затем запустите команду заново.")
         case .sourceUnavailable, .sourceReadFailed:
             UserFacingFailure(title: "Накопитель отключён", message: error.localizedDescription)
         case .sourceChanged:

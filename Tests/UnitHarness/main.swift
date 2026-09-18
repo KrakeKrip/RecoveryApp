@@ -139,6 +139,126 @@ check(
     "запрещается результат на исходном накопителе"
 )
 
+// Физический источник: выбор и сверка диска по снимку без diskutil и авторизации.
+let matchedDrive = try PhysicalDriveSelector.selectDrive(
+    identifier: "disk7",
+    expectedName: "TEST USB",
+    expectedSize: 128_000_000_000,
+    from: drives
+)
+check(matchedDrive.id == "disk7", "селектор находит сверенный диск")
+
+private func expectDriveError(
+    _ identifier: String,
+    _ name: String,
+    _ size: Int64,
+    _ expected: DeletedFilesError,
+    _ message: String
+) {
+    do {
+        _ = try PhysicalDriveSelector.selectDrive(
+            identifier: identifier,
+            expectedName: name,
+            expectedSize: size,
+            from: drives
+        )
+        check(false, message)
+    } catch let error as DeletedFilesError {
+        check(error == expected, message)
+    } catch {
+        check(false, message)
+    }
+}
+
+private func expectInvalidDriveSource(
+    _ identifier: String,
+    _ name: String,
+    _ size: Int64,
+    _ message: String
+) {
+    do {
+        _ = try PhysicalDriveSelector.selectDrive(
+            identifier: identifier,
+            expectedName: name,
+            expectedSize: size,
+            from: drives
+        )
+        check(false, message)
+    } catch let error as DeletedFilesError {
+        guard case .invalidDriveSource = error else {
+            FileHandle.standardError.write(Data("FAIL: \(message)\n".utf8))
+            exit(1)
+        }
+    } catch {
+        check(false, message)
+    }
+}
+
+expectDriveError("disk9", "TEST USB", 128_000_000_000, .sourceUnavailable, "отсутствующий диск даёт sourceUnavailable")
+expectDriveError("disk7", "ДРУГОЕ ИМЯ", 128_000_000_000, .sourceChanged, "изменившееся имя даёт sourceChanged")
+expectDriveError("disk7", "TEST USB", 127_000_000_000, .sourceChanged, "изменившийся размер даёт sourceChanged")
+expectInvalidDriveSource("/dev/rdisk7", "TEST USB", 128_000_000_000, "raw-путь вместо diskN отклоняется")
+expectInvalidDriveSource("disk7", "TEST USB", 0, "нулевой ожидаемый размер отклоняется")
+expectInvalidDriveSource("disk7", "TEST USB", -5, "отрицательный ожидаемый размер отклоняется")
+
+// JSON-кодирование физического отчёта скана.
+let physicalScanData = try JSONEncoder().encode(PhysicalQuickScanReport(
+    schemaVersion: 1,
+    drive: DriveIdentityReport(drives[0]),
+    candidates: []
+))
+let physicalScanJSON = String(decoding: physicalScanData, as: UTF8.self)
+check(physicalScanJSON.contains("\"schemaVersion\":1"), "физический JSON содержит schemaVersion")
+check(physicalScanJSON.contains("\"id\":\"disk7\""), "физический JSON содержит id")
+check(physicalScanJSON.contains("\"rawDevicePath\"") && physicalScanJSON.contains("rdisk7"),
+      "физический JSON содержит rawDevicePath")
+check(physicalScanJSON.contains("\"candidates\":[]"), "физический JSON допускает пустой список кандидатов")
+
+// Preflight выхода физического восстановления выполняется до Authorization
+// Services: только файловая система и точки монтирования снимка диска.
+// Синтетический снимок с реальным каталогом монтирования внутри temp.
+let mntRoot = root.appendingPathComponent("mnt", isDirectory: true)
+let mntInner = mntRoot.appendingPathComponent("inner", isDirectory: true)
+try FileManager.default.createDirectory(at: mntInner, withIntermediateDirectories: true)
+let mountedPlist: [String: Any] = [
+    "AllDisksAndPartitions": [[
+        "DeviceIdentifier": "disk8",
+        "Size": 64_000_000_000 as NSNumber,
+        "MountPoint": mntRoot.path
+    ]]
+]
+let mountedData = try PropertyListSerialization.data(
+    fromPropertyList: mountedPlist,
+    format: .xml,
+    options: 0
+)
+let mountedDrive = try ExternalDriveParser.drives(from: mountedData)[0]
+do {
+    try PhysicalQuickRecovery.preflightRecoveryOutput(outputFolderURL: mntInner, drive: mountedDrive)
+    check(false, "output внутри точки монтирования отклоняется")
+} catch let error as DeletedFilesError {
+    check(error == .outputOnSource, "output внутри точки монтирования даёт outputOnSource")
+} catch {
+    check(false, "output внутри точки монтирования даёт outputOnSource")
+}
+do {
+    try PhysicalQuickRecovery.preflightRecoveryOutput(
+        outputFolderURL: root.appendingPathComponent("absent-output", isDirectory: true),
+        drive: mountedDrive
+    )
+    check(false, "несуществующий output отклоняется")
+} catch let error as DeletedFilesError {
+    check(error == .outputFolderMissing, "несуществующий output даёт outputFolderMissing")
+} catch {
+    check(false, "несуществующий output даёт outputFolderMissing")
+}
+do {
+    try PhysicalQuickRecovery.preflightRecoveryOutput(outputFolderURL: root, drive: mountedDrive)
+    check(true, "корректный output вне источника проходит preflight")
+} catch {
+    check(false, "корректный output вне источника проходит preflight")
+}
+
 let dirtyLog = "\u{001B}[31mОшибка\u{001B}[0m\r\n\n\n  Следующий этап  \u{0007}"
 let cleanLog = LogSanitizer.clean(dirtyLog)
 check(!cleanLog.contains("\u{001B}"), "из лога удаляются ANSI-команды")
@@ -190,6 +310,13 @@ do {
     let drivesJSON = try CommandLineParser.parse(["drives", "list", "--json"])
     let quickScan = try CommandLineParser.parse(["quick", "scan", "--image", "a.img"])
     let quickScanJSON = try CommandLineParser.parse(["quick", "scan", "--json", "--image", "a.img"])
+    let quickDriveScan = try CommandLineParser.parse([
+        "quick", "scan", "--drive", "disk4", "--expected-name", "Flashka", "--expected-size", "125829120000"
+    ])
+    let quickDriveRecover = try CommandLineParser.parse([
+        "quick", "recover", "--drive", "disk4", "--expected-name", "Flashka",
+        "--expected-size", "125829120000", "--output", "res", "--all"
+    ])
     let quickRecover = try CommandLineParser.parse([
         "quick", "recover", "--image", "i.img", "--output", "result", "--all"
     ])
@@ -202,14 +329,29 @@ do {
     check(versionJSON == .version(json: true), "version --json разбирается")
     check(drivesText == .drivesList(json: false), "drives list разбирается")
     check(drivesJSON == .drivesList(json: true), "drives list --json разбирается")
-    check(quickScan == .quickScan(image: "a.img", json: false), "quick scan разбирается")
-    check(quickScanJSON == .quickScan(image: "a.img", json: true), "quick scan --json разбирается")
+    check(quickScan == .quickScan(source: .image("a.img"), json: false), "quick scan разбирается")
+    check(quickScanJSON == .quickScan(source: .image("a.img"), json: true), "quick scan --json разбирается")
     check(
-        quickRecover == .quickRecover(image: "i.img", output: "result", json: false),
+        quickDriveScan == .quickScan(
+            source: .drive(identifier: "disk4", expectedName: "Flashka", expectedSize: 125829120000),
+            json: false
+        ),
+        "quick scan --drive разбирается"
+    )
+    check(
+        quickDriveRecover == .quickRecover(
+            source: .drive(identifier: "disk4", expectedName: "Flashka", expectedSize: 125829120000),
+            output: "res",
+            json: false
+        ),
+        "quick recover --drive разбирается"
+    )
+    check(
+        quickRecover == .quickRecover(source: .image("i.img"), output: "result", json: false),
         "quick recover разбирается"
     )
     check(
-        quickRecoverJSON == .quickRecover(image: "i.img", output: "result", json: true),
+        quickRecoverJSON == .quickRecover(source: .image("i.img"), output: "result", json: true),
         "quick recover --json разбирается"
     )
 } catch {
@@ -247,5 +389,29 @@ expectUsageError([
     "quick", "recover", "--image", "i.img", "--output", "--all"
 ], "--output не принимает --all как значение")
 expectUsageError(["quick", "scan", "--output", "--image"], "--output не принимает --image как значение")
+expectUsageError(["quick", "scan", "--image", "a.img", "--drive", "disk4"], "конфликт --image и --drive отклоняется")
+expectUsageError([
+    "quick", "recover", "--image", "a.img", "--drive", "disk4", "--output", "d", "--all"
+], "конфликт --image и --drive в recover отклоняется")
+expectUsageError(["quick", "scan", "--drive", "disk4"], "drive без expected-имени и размера отклоняется")
+expectUsageError(["quick", "scan", "--drive", "disk4", "--expected-name", "N"], "drive без expected-size отклоняется")
+expectUsageError([
+    "quick", "scan", "--drive", "/dev/rdisk4", "--expected-name", "N", "--expected-size", "5"
+], "raw-путь в --drive отклоняется")
+expectUsageError([
+    "quick", "scan", "--drive", "disk4", "--expected-name", "N", "--expected-size", "abc"
+], "не-число в expected-size отклоняется")
+expectUsageError([
+    "quick", "scan", "--drive", "disk4", "--expected-name", "N", "--expected-size", "0"
+], "нулевой expected-size отклоняется")
+expectUsageError([
+    "quick", "scan", "--drive", "disk4", "--expected-name", "N", "--expected-size", "-5"
+], "отрицательный expected-size отклоняется")
+expectUsageError(["quick", "scan", "--image", "a.img", "--expected-name", "N"], "expected-name с --image запрещён")
+expectUsageError(["quick", "scan"], "источник не указан")
+expectUsageError(["quick", "scan", "--drive"], "--drive без значения отклоняется")
+expectUsageError([
+    "quick", "recover", "--drive", "disk4", "--expected-name", "N", "--expected-size", "5", "--output", "d"
+], "recover --drive без --all отклоняется")
 
-print("PASS: 65 domain checks")
+print("PASS: 95 domain checks")

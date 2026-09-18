@@ -1,11 +1,17 @@
 import Foundation
+import RecoveryCore
+
+enum QuickSource: Equatable {
+    case image(String)
+    case drive(identifier: String, expectedName: String, expectedSize: Int64)
+}
 
 enum CLICommand: Equatable {
     case help
     case version(json: Bool)
     case drivesList(json: Bool)
-    case quickScan(image: String, json: Bool)
-    case quickRecover(image: String, output: String, json: Bool)
+    case quickScan(source: QuickSource, json: Bool)
+    case quickRecover(source: QuickSource, output: String, json: Bool)
 }
 
 enum CLIUsageError: Error, Equatable {
@@ -20,11 +26,19 @@ enum CLIUsageError: Error, Equatable {
     case missingRequiredOption(String)
     case duplicateOption(String)
     case optionNotAllowed(String, String)
+    case conflictingOptions(String, String)
+    case missingSourceOption
+    case invalidDriveIdentifier(String)
+    case invalidExpectedSize(String)
 }
 
 enum CommandLineParser {
-    private static let quickOptionTokens: Set<String> = ["--image", "--output", "--all"]
-    private static let knownOptionTokens: Set<String> = ["--json", "--image", "--output", "--all"]
+    /// Опции quick, принимающие значение.
+    private static let valueOptionTokens: Set<String> = [
+        "--image", "--output", "--drive", "--expected-name", "--expected-size"
+    ]
+    private static let knownOptionTokens: Set<String> =
+        valueOptionTokens.union(["--json", "--all"])
 
     static func parse(_ arguments: [String]) throws -> CLICommand {
         var positional: [String] = []
@@ -36,7 +50,7 @@ enum CommandLineParser {
                 json = true
             } else if token == "--all" {
                 positional.append(token)
-            } else if token == "--image" || token == "--output" {
+            } else if valueOptionTokens.contains(token) {
                 // Значением не может быть другой известный параметр CLI:
                 // "quick scan --image --json" — это ошибка, а не образ "--json".
                 guard index + 1 < arguments.count,
@@ -81,6 +95,9 @@ enum CommandLineParser {
         }
 
         var image: String?
+        var drive: String?
+        var expectedName: String?
+        var expectedSize: Int64?
         var output: String?
         var all = false
         var index = 2
@@ -92,38 +109,72 @@ enum CommandLineParser {
                 index += 1
                 continue
             }
-            guard quickOptionTokens.contains(token) else {
+            // Pre-scan гарантирует пары «опция — значение» и то, что значением
+            // не является другой известный параметр.
+            guard valueOptionTokens.contains(token), index + 1 < positional.count else {
                 throw CLIUsageError.unexpectedArgument(token)
             }
-            guard index + 1 < positional.count else {
-                throw CLIUsageError.missingOptionValue(token)
-            }
             let value = positional[index + 1]
-            if token == "--image" {
+            switch token {
+            case "--image":
                 guard image == nil else { throw CLIUsageError.duplicateOption(token) }
                 image = value
-            } else {
+            case "--drive":
+                guard drive == nil else { throw CLIUsageError.duplicateOption(token) }
+                drive = value
+            case "--expected-name":
+                guard expectedName == nil else { throw CLIUsageError.duplicateOption(token) }
+                expectedName = value
+            case "--expected-size":
+                guard expectedSize == nil else { throw CLIUsageError.duplicateOption(token) }
+                guard let parsed = Int64(value), parsed > 0 else {
+                    throw CLIUsageError.invalidExpectedSize(value)
+                }
+                expectedSize = parsed
+            default:
                 guard output == nil else { throw CLIUsageError.duplicateOption(token) }
                 output = value
             }
             index += 2
         }
 
+        if image != nil, drive != nil {
+            throw CLIUsageError.conflictingOptions("--image", "--drive")
+        }
+        if image != nil, expectedName != nil {
+            throw CLIUsageError.optionNotAllowed("--expected-name", "quick scan --image")
+        }
+        if image != nil, expectedSize != nil {
+            throw CLIUsageError.optionNotAllowed("--expected-size", "quick scan --image")
+        }
+
+        let source: QuickSource
+        if let drive {
+            guard PhysicalDriveSelector.isValidDriveIdentifier(drive) else {
+                throw CLIUsageError.invalidDriveIdentifier(drive)
+            }
+            guard let expectedName else { throw CLIUsageError.missingRequiredOption("--expected-name") }
+            guard let expectedSize else { throw CLIUsageError.missingRequiredOption("--expected-size") }
+            source = .drive(identifier: drive, expectedName: expectedName, expectedSize: expectedSize)
+        } else if let image {
+            source = .image(image)
+        } else {
+            throw CLIUsageError.missingSourceOption
+        }
+
         switch subcommand {
         case "scan":
-            guard let image else { throw CLIUsageError.missingRequiredOption("--image") }
             if output != nil {
                 throw CLIUsageError.optionNotAllowed("--output", "quick scan")
             }
             if all {
                 throw CLIUsageError.optionNotAllowed("--all", "quick scan")
             }
-            return .quickScan(image: image, json: json)
+            return .quickScan(source: source, json: json)
         case "recover":
-            guard let image else { throw CLIUsageError.missingRequiredOption("--image") }
             guard let output else { throw CLIUsageError.missingRequiredOption("--output") }
             guard all else { throw CLIUsageError.missingRequiredOption("--all") }
-            return .quickRecover(image: image, output: output, json: json)
+            return .quickRecover(source: source, output: output, json: json)
         case let other:
             throw CLIUsageError.unknownQuickCommand(other)
         }

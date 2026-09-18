@@ -37,6 +37,7 @@ swiftc \
     Sources/RecoveryApp/LogSanitizer.swift \
     Sources/RecoveryApp/DeletedFilesRecovery.swift \
     Sources/RecoveryApp/UserFacingFailure.swift \
+    Sources/recoveryapp-cli/CLIReports.swift \
     Sources/recoveryapp-cli/CommandLineParser.swift \
     Tests/UnitHarness/main.swift \
     -o "$cache_dir/RecoveryAppUnitTests"

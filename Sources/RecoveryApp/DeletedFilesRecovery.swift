@@ -1,16 +1,16 @@
 @preconcurrency import Foundation
 import Darwin
 import RecoveryCore
-import Security
 
 struct DeepRecoveryResult: Sendable {
     let outputDirectory: URL
     let recoveredFiles: [URL]
 }
 
-/// Режимы физического накопителя и глубокого поиска PhotoRec. Образный быстрый
-/// режим живёт в RecoveryCore (`ImageQuickRecovery`) и отсюда только
-/// делегируется, чтобы GUI и CLI не имели двух копий алгоритма.
+/// Режимы физического накопителя и глубокого поиска PhotoRec. Быстрые режимы
+/// (образ и физический накопитель) живут в RecoveryCore
+/// (`ImageQuickRecovery`, `PhysicalQuickRecovery`) и отсюда только
+/// делегируются, чтобы GUI и CLI не имели двух копий алгоритмов.
 final class DeletedFilesExecutor: @unchecked Sendable {
     private struct ToolResult {
         let status: Int32
@@ -18,68 +18,11 @@ final class DeletedFilesExecutor: @unchecked Sendable {
         let output: String
     }
 
-    /// Keeps the Authorization Services session alive until authopen has
-    /// consumed its external form. Releasing the AuthorizationRef earlier
-    /// revokes the credentials associated with this process and makes
-    /// authopen display a second authentication dialog.
-    private final class ReadOnlyAuthorization: @unchecked Sendable {
-        let externalForm: Data
-        private let reference: AuthorizationRef
-
-        init(device: String) throws {
-            var authorization: AuthorizationRef?
-            guard AuthorizationCreate(nil, nil, [], &authorization) == errAuthorizationSuccess,
-                  let authorization else {
-                throw DeletedFilesError.authorizationDenied
-            }
-
-            reference = authorization
-            let rightName = "sys.openfile.readonly.\(device)"
-            let status = rightName.withCString { name in
-                var item = AuthorizationItem(
-                    name: name,
-                    valueLength: 0,
-                    value: nil,
-                    flags: 0
-                )
-                return withUnsafeMutablePointer(to: &item) { itemPointer in
-                    var rights = AuthorizationRights(count: 1, items: itemPointer)
-                    let flags: AuthorizationFlags = [
-                        .interactionAllowed,
-                        .extendRights,
-                        .preAuthorize
-                    ]
-                    return AuthorizationCopyRights(
-                        authorization,
-                        &rights,
-                        nil,
-                        flags,
-                        nil
-                    )
-                }
-            }
-            guard status == errAuthorizationSuccess else {
-                AuthorizationFree(authorization, [])
-                throw DeletedFilesError.authorizationDenied
-            }
-
-            var external = AuthorizationExternalForm()
-            guard AuthorizationMakeExternalForm(authorization, &external) == errAuthorizationSuccess else {
-                AuthorizationFree(authorization, [])
-                throw DeletedFilesError.authorizationDenied
-            }
-            externalForm = withUnsafeBytes(of: &external) { Data($0) }
-        }
-
-        deinit {
-            AuthorizationFree(reference, [])
-        }
-    }
-
     private let lock = NSLock()
     private var process: Process?
     private var cancellationMarkerURL: URL?
     private var imageRecovery: ImageQuickRecovery?
+    private var physicalRecovery: PhysicalQuickRecovery?
 
     func scan(
         imageURL: URL,
@@ -94,23 +37,9 @@ final class DeletedFilesExecutor: @unchecked Sendable {
         drive: ExternalDrive,
         onOutput: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> [DeletedFileCandidate] {
-        let authorization = try ReadOnlyAuthorization(device: drive.rawDevicePath)
-        let helper = try RecoveryToolLocator.toolURL(
-            named: "recoveryapp-metadata-helper",
-            environmentKey: "RECOVERYAPP_METADATA_HELPER_PATH"
-        )
-        return try await withTaskCancellationHandler {
-            try await Task.detached(priority: .userInitiated) { [self] in
-                try scanDriveBlocking(
-                    drive: drive,
-                    helper: helper,
-                    authorization: authorization,
-                    onOutput: onOutput
-                )
-            }.value
-        } onCancel: { [self] in
-            cancel()
-        }
+        let recovery = try Self.makePhysicalRecovery()
+        replacePhysicalRecovery(recovery)
+        return try await recovery.scan(drive: drive, onOutput: onOutput)
     }
 
     func recover(
@@ -136,27 +65,14 @@ final class DeletedFilesExecutor: @unchecked Sendable {
         onOutput: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> [URL] {
         guard !candidates.isEmpty else { throw DeletedFilesError.nothingSelected }
-        try ImageQuickRecovery.validateOutputFolder(outputFolderURL)
-        guard !drive.contains(outputFolderURL) else { throw DeletedFilesError.outputOnSource }
-        let authorization = try ReadOnlyAuthorization(device: drive.rawDevicePath)
-        let helper = try RecoveryToolLocator.toolURL(
-            named: "recoveryapp-metadata-helper",
-            environmentKey: "RECOVERYAPP_METADATA_HELPER_PATH"
+        let recovery = try Self.makePhysicalRecovery()
+        replacePhysicalRecovery(recovery)
+        return try await recovery.recover(
+            drive: drive,
+            outputFolderURL: outputFolderURL,
+            candidates: candidates,
+            onOutput: onOutput
         )
-        return try await withTaskCancellationHandler {
-            try await Task.detached(priority: .userInitiated) { [self] in
-                try recoverDriveBlocking(
-                    drive: drive,
-                    outputFolderURL: outputFolderURL,
-                    candidates: candidates,
-                    helper: helper,
-                    authorization: authorization,
-                    onOutput: onOutput
-                )
-            }.value
-        } onCancel: { [self] in
-            cancel()
-        }
     }
 
     func deepRecover(
@@ -226,8 +142,10 @@ final class DeletedFilesExecutor: @unchecked Sendable {
         let runningProcess = process
         let cancellationMarkerURL = cancellationMarkerURL
         let activeImageRecovery = imageRecovery
+        let activePhysicalRecovery = physicalRecovery
         lock.unlock()
         activeImageRecovery?.cancel()
+        activePhysicalRecovery?.cancel()
         if let cancellationMarkerURL {
             _ = FileManager.default.createFile(
                 atPath: cancellationMarkerURL.path,
@@ -261,142 +179,25 @@ final class DeletedFilesExecutor: @unchecked Sendable {
         )
     }
 
+    private static func makePhysicalRecovery() throws -> PhysicalQuickRecovery {
+        let helper = try RecoveryToolLocator.toolURL(
+            named: "recoveryapp-metadata-helper",
+            environmentKey: "RECOVERYAPP_METADATA_HELPER_PATH"
+        )
+        let launcher = try RecoveryToolLocator.launcherURL()
+        return PhysicalQuickRecovery(helper: helper, launcher: launcher)
+    }
+
     private func replaceImageRecovery(_ recovery: ImageQuickRecovery) {
         lock.lock()
         imageRecovery = recovery
         lock.unlock()
     }
 
-    private func scanDriveBlocking(
-        drive: ExternalDrive,
-        helper: URL,
-        authorization: ReadOnlyAuthorization,
-        onOutput: @escaping @MainActor @Sendable (String) -> Void
-    ) throws -> [DeletedFileCandidate] {
-        try checkCancelled()
-        let common = [drive.rawDevicePath, String(drive.size)]
-        emit("Источник: \(drive.displayName) (\(drive.rawDevicePath), только чтение).\n", onOutput)
-        emit("Проверка файловой системы без таблицы разделов…\n", onOutput)
-        if let direct = try scanDriveFileSystem(
-            helper: helper,
-            commonArguments: common,
-            offset: 0,
-            authorization: authorization
-        ) {
-            return direct
-        }
-
-        try checkCancelled()
-        emit("Обнаружение разделов на накопителе…\n", onOutput)
-        let partitions = try runTool(
-            helper,
-            arguments: ["mmls"] + common,
-            standardInput: authorization.externalForm
-        )
-        if partitions.status != 0, !partitions.output.isEmpty {
-            emit("Технические сведения mmls:\n\(partitions.output)\n", onOutput)
-        }
-        try mapHelperFailure(partitions, allowToolFailure: false)
-        let offsets = SleuthKitOutputParser.partitionOffsets(from: partitions.output)
-        guard !offsets.isEmpty else { throw DeletedFilesError.unsupportedImage }
-
-        var found: [DeletedFileCandidate] = []
-        var recognizedFileSystem = false
-        for offset in offsets {
-            try checkCancelled()
-            emit("Проверка раздела со смещением \(offset) секторов…\n", onOutput)
-            if let result = try scanDriveFileSystem(
-                helper: helper,
-                commonArguments: common,
-                offset: offset,
-                authorization: authorization
-            ) {
-                recognizedFileSystem = true
-                found.append(contentsOf: result)
-            }
-        }
-        guard recognizedFileSystem else { throw DeletedFilesError.unsupportedImage }
-        return Array(Set(found)).sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
-    }
-
-    private func scanDriveFileSystem(
-        helper: URL,
-        commonArguments: [String],
-        offset: Int64,
-        authorization: ReadOnlyAuthorization
-    ) throws -> [DeletedFileCandidate]? {
-        for filesystemType in ["fat32", "exfat"] {
-            let result = try runTool(
-                helper,
-                arguments: ["fls"] + commonArguments + [String(offset), filesystemType],
-                standardInput: authorization.externalForm
-            )
-            if result.status == 0 {
-                return SleuthKitOutputParser.deletedFiles(
-                    from: result.output,
-                    partitionOffset: offset,
-                    filesystemType: filesystemType
-                )
-            }
-            try mapHelperFailure(result)
-        }
-        return nil
-    }
-
-    private func recoverDriveBlocking(
-        drive: ExternalDrive,
-        outputFolderURL: URL,
-        candidates: [DeletedFileCandidate],
-        helper: URL,
-        authorization: ReadOnlyAuthorization,
-        onOutput: @escaping @MainActor @Sendable (String) -> Void
-    ) throws -> [URL] {
-        var results: [URL] = []
-        for (index, candidate) in candidates.enumerated() {
-            try checkCancelled()
-            let resultURL = ImageQuickRecovery.uniqueResultURL(suggestedName: candidate.displayName, folder: outputFolderURL)
-            let partialURL = resultURL.appendingPathExtension("partial")
-            FileManager.default.createFile(atPath: partialURL.path, contents: nil)
-            let outputHandle = try FileHandle(forWritingTo: partialURL)
-            defer { try? outputHandle.close() }
-            emit("[\(index + 1)/\(candidates.count)] \(candidate.path)\n", onOutput)
-            do {
-                let result = try runTool(
-                    helper,
-                    arguments: [
-                        "icat", drive.rawDevicePath, String(drive.size), outputFolderURL.path,
-                        String(candidate.partitionOffset), candidate.inode, candidate.filesystemType
-                    ],
-                    standardOutput: outputHandle,
-                    standardInput: authorization.externalForm
-                )
-                try outputHandle.synchronize()
-                try outputHandle.close()
-                try ImageQuickRecovery.classifyToolOutput(result.output, outputFolderURL: outputFolderURL)
-                try mapHelperFailure(result, toolName: "icat", allowToolFailure: false)
-                try FileManager.default.moveItem(at: partialURL, to: resultURL)
-                results.append(resultURL)
-            } catch {
-                try? FileManager.default.removeItem(at: partialURL)
-                throw error
-            }
-        }
-        return results
-    }
-
-    private func mapHelperFailure(
-        _ result: ToolResult,
-        toolName: String = "Sleuth Kit",
-        allowToolFailure: Bool = true
-    ) throws {
-        if result.status == 0 { return }
-        if result.status == 77 { throw DeletedFilesError.authorizationDenied }
-        if result.status == 74 { throw DeletedFilesError.sourceChanged }
-        if result.status == 73 { throw DeletedFilesError.outputOnSource }
-        if result.status == 130 || result.terminationReason == .uncaughtSignal || Task.isCancelled {
-            throw DeletedFilesError.cancelled
-        }
-        if !allowToolFailure { throw DeletedFilesError.toolFailed(toolName, result.status) }
+    private func replacePhysicalRecovery(_ recovery: PhysicalQuickRecovery) {
+        lock.lock()
+        physicalRecovery = recovery
+        lock.unlock()
     }
 
     private func deepRecoverBlocking(

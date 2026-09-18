@@ -7,7 +7,7 @@
 | TASK-001 | DONE | `glm/task-001-cli-foundation` | Общий RecoveryCore и минимальный CLI |
 | TASK-002 | DONE | `glm/task-002-sleuthkit-fd` | Пересборка Sleuth Kit и регрессия унаследованного read-only FD |
 | TASK-003 | DONE | `glm/task-003-quick-image-cli` | RecoveryCore и CLI быстрого восстановления из образа |
-| TASK-004 | TODO | `glm/task-004-physical-quick-cli` | Физический read-only источник и CLI через `authopen` |
+| TASK-004 | REVIEW | `glm/task-004-physical-quick-cli` | Физический read-only источник и CLI через `authopen` |
 | TASK-005 | TODO | — | CLI PhotoRec, прогресс и остановка |
 | TASK-006 | TODO | — | CLI восстановления видео |
 | TASK-007 | TODO | — | Перевод SwiftUI на общий RecoveryCore |

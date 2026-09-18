@@ -27,6 +27,33 @@ func makeImageRecovery() throws -> ImageQuickRecovery {
     ImageQuickRecovery(tools: try ImageQuickToolSet.fromEnvironment())
 }
 
+func makePhysicalRecovery() throws -> PhysicalQuickRecovery {
+    let helper = try RecoveryToolLocator.toolURL(
+        named: "recoveryapp-metadata-helper",
+        environmentKey: "RECOVERYAPP_METADATA_HELPER_PATH"
+    )
+    return PhysicalQuickRecovery(helper: helper, launcher: try? RecoveryToolLocator.launcherURL())
+}
+
+/// Технический прогресс физического режима — в stderr, stdout остаётся чистым.
+let progressToStderr: @MainActor @Sendable (String) -> Void = { text in
+    FileHandle.standardError.write(Data(text.utf8))
+}
+
+func printCandidates(_ candidates: [DeletedFileCandidate]) {
+    if candidates.isEmpty {
+        print("Удалённые файлы не найдены.")
+        return
+    }
+    print("Найдено удалённых файлов: \(candidates.count).")
+    for candidate in candidates {
+        let offset = candidate.partitionOffset > 0
+            ? "смещение \(candidate.partitionOffset)"
+            : "без таблицы разделов"
+        print("  [\(candidate.filesystemType), \(offset)] \(candidate.path)")
+    }
+}
+
 do {
     switch try CommandLineParser.parse(cliArguments) {
     case .help:
@@ -55,51 +82,114 @@ do {
                 print("  \(drive.cliSummaryLine)")
             }
         }
-    case .quickScan(let image, let json):
-        let imageURL = absoluteFileURL(image)
-        let candidates = try await makeImageRecovery().scan(imageURL: imageURL)
-        if json {
-            try printJSON(QuickScanReport(
-                schemaVersion: 1,
-                source: imageURL.path,
-                candidates: candidates.map { QuickCandidateReport($0) }
-            ))
-        } else if candidates.isEmpty {
-            print("Удалённые файлы не найдены.")
-        } else {
-            print("Найдено удалённых файлов: \(candidates.count).")
-            for candidate in candidates {
-                let offset = candidate.partitionOffset > 0
-                    ? "смещение \(candidate.partitionOffset)"
-                    : "без таблицы разделов"
-                print("  [\(candidate.filesystemType), \(offset)] \(candidate.path)")
+    case .quickScan(let source, let json):
+        switch source {
+        case .image(let image):
+            let imageURL = absoluteFileURL(image)
+            let candidates = try await makeImageRecovery().scan(imageURL: imageURL)
+            if json {
+                try printJSON(QuickScanReport(
+                    schemaVersion: 1,
+                    source: imageURL.path,
+                    candidates: candidates.map { QuickCandidateReport($0) }
+                ))
+            } else {
+                printCandidates(candidates)
+            }
+        case .drive(let identifier, let expectedName, let expectedSize):
+            // Повторное обнаружение и сверка id/имени/размера выполняются
+            // до Authorization Services.
+            let discovered = try await ExternalDriveDiscovery().load()
+            let drive = try PhysicalDriveSelector.selectDrive(
+                identifier: identifier,
+                expectedName: expectedName,
+                expectedSize: expectedSize,
+                from: discovered
+            )
+            let candidates = try await makePhysicalRecovery().scan(
+                drive: drive,
+                onOutput: progressToStderr
+            )
+            if json {
+                try printJSON(PhysicalQuickScanReport(
+                    schemaVersion: 1,
+                    drive: DriveIdentityReport(drive),
+                    candidates: candidates.map { QuickCandidateReport($0) }
+                ))
+            } else {
+                print("Накопитель: \(drive.id) · \(drive.name) — \(drive.rawDevicePath).")
+                printCandidates(candidates)
             }
         }
-    case .quickRecover(let image, let output, let json):
-        let imageURL = absoluteFileURL(image)
+    case .quickRecover(let source, let output, let json):
         let outputURL = absoluteFileURL(output)
-        let recovery = try makeImageRecovery()
-        let candidates = try await recovery.scan(imageURL: imageURL)
-        let recovered: [URL] = candidates.isEmpty
-            ? []
-            : try await recovery.recover(
-                imageURL: imageURL,
-                outputFolderURL: outputURL,
-                candidates: candidates
+        switch source {
+        case .image(let image):
+            let imageURL = absoluteFileURL(image)
+            let recovery = try makeImageRecovery()
+            let candidates = try await recovery.scan(imageURL: imageURL)
+            let recovered: [URL] = candidates.isEmpty
+                ? []
+                : try await recovery.recover(
+                    imageURL: imageURL,
+                    outputFolderURL: outputURL,
+                    candidates: candidates
+                )
+            if json {
+                try printJSON(QuickRecoverReport(
+                    schemaVersion: 1,
+                    outputDirectory: outputURL.path,
+                    recoveredCount: recovered.count,
+                    files: recovered.map(\.path)
+                ))
+            } else if recovered.isEmpty {
+                print("Удалённые файлы не найдены — восстанавливать нечего.")
+            } else {
+                print("Восстановлено файлов: \(recovered.count).")
+                for file in recovered {
+                    print("  \(file.path)")
+                }
+            }
+        case .drive(let identifier, let expectedName, let expectedSize):
+            // Повторное обнаружение и сверка — до Authorization Services;
+            // preflight папки результата — до создания сессии и скана.
+            // Один экземпляр PhysicalQuickRecovery держит одну сессию
+            // для scan и всех icat этой команды.
+            let discovered = try await ExternalDriveDiscovery().load()
+            let drive = try PhysicalDriveSelector.selectDrive(
+                identifier: identifier,
+                expectedName: expectedName,
+                expectedSize: expectedSize,
+                from: discovered
             )
-        if json {
-            try printJSON(QuickRecoverReport(
-                schemaVersion: 1,
-                outputDirectory: outputURL.path,
-                recoveredCount: recovered.count,
-                files: recovered.map(\.path)
-            ))
-        } else if recovered.isEmpty {
-            print("Удалённые файлы не найдены — восстанавливать нечего.")
-        } else {
-            print("Восстановлено файлов: \(recovered.count).")
-            for file in recovered {
-                print("  \(file.path)")
+            try PhysicalQuickRecovery.preflightRecoveryOutput(
+                outputFolderURL: outputURL,
+                drive: drive
+            )
+            let recovery = try makePhysicalRecovery()
+            let candidates = try await recovery.scan(drive: drive, onOutput: progressToStderr)
+            let recovered: [URL] = candidates.isEmpty
+                ? []
+                : try await recovery.recover(
+                    drive: drive,
+                    outputFolderURL: outputURL,
+                    candidates: candidates,
+                    onOutput: progressToStderr
+                )
+            if json {
+                try printJSON(QuickRecoverReport(
+                    schemaVersion: 1,
+                    outputDirectory: outputURL.path,
+                    recoveredCount: recovered.count,
+                    files: recovered.map(\.path)
+                ))
+            } else if recovered.isEmpty {
+                print("Удалённые файлы не найдены — восстанавливать нечего.")
+            } else {
+                print("Восстановлено файлов: \(recovered.count).")
+                for file in recovered {
+                    print("  \(file.path)")
+                }
             }
         }
     }
