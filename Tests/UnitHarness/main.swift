@@ -67,9 +67,29 @@ check(SleuthKitOutputParser.partitionOffsets(from: mmlsOutput) == [2048], "mmls 
 let existingDocument = root.appendingPathComponent("document.txt")
 _ = FileManager.default.createFile(atPath: existingDocument.path, contents: Data())
 check(
-    DeletedFilesExecutor.uniqueResultURL(suggestedName: "document.txt", folder: root)
+    ImageQuickRecovery.uniqueResultURL(suggestedName: "document.txt", folder: root)
         .lastPathComponent == "document_2.txt",
     "восстановление не перезаписывает найденный файл"
+)
+
+// Опасные имена из fls не должны выходить за пределы папки результата.
+check(ImageQuickRecovery.safeResultName("..") == "recovered_file", "имя .. заменяется безопасным")
+check(ImageQuickRecovery.safeResultName(".") == "recovered_file", "имя . заменяется безопасным")
+check(ImageQuickRecovery.safeResultName("") == "recovered_file", "пустое имя заменяется безопасным")
+check(ImageQuickRecovery.safeResultName("/etc/passwd") == "_etc_passwd", "абсолютный путь теряет разделители")
+check(ImageQuickRecovery.safeResultName("dir/..\\evil") == "dir_.._evil", "разделители / и \\ заменяются")
+let resultFolder = root.appendingPathComponent("results", isDirectory: true)
+try FileManager.default.createDirectory(at: resultFolder, withIntermediateDirectories: false)
+let escapeCandidate = ImageQuickRecovery.uniqueResultURL(suggestedName: "..", folder: resultFolder)
+check(escapeCandidate.deletingLastPathComponent().standardizedFileURL == resultFolder.standardizedFileURL,
+      "результат для имени .. остаётся внутри папки результата")
+check(escapeCandidate.lastPathComponent != "..", "имя .. не попадает в результат")
+let traversal = ImageQuickRecovery.uniqueResultURL(suggestedName: "RECOVERY.TXT", folder: resultFolder)
+_ = FileManager.default.createFile(atPath: traversal.path, contents: Data("first".utf8))
+check(
+    ImageQuickRecovery.uniqueResultURL(suggestedName: "RECOVERY.TXT", folder: resultFolder)
+        .lastPathComponent == "RECOVERY_2.TXT",
+    "повторный запуск выбирает новое имя без перезаписи"
 )
 
 let photoRecBase = root.appendingPathComponent("PhotoRec-Recovery")
@@ -168,12 +188,30 @@ do {
     let versionJSON = try CommandLineParser.parse(["version", "--json"])
     let drivesText = try CommandLineParser.parse(["drives", "list"])
     let drivesJSON = try CommandLineParser.parse(["drives", "list", "--json"])
+    let quickScan = try CommandLineParser.parse(["quick", "scan", "--image", "a.img"])
+    let quickScanJSON = try CommandLineParser.parse(["quick", "scan", "--json", "--image", "a.img"])
+    let quickRecover = try CommandLineParser.parse([
+        "quick", "recover", "--image", "i.img", "--output", "result", "--all"
+    ])
+    let quickRecoverJSON = try CommandLineParser.parse([
+        "quick", "recover", "--image", "i.img", "--output", "result", "--all", "--json"
+    ])
     check(emptyCommand == .help, "пустой вызов CLI показывает справку")
     check(helpCommand == .help, "help разбирается")
     check(versionText == .version(json: false), "version разбирается")
     check(versionJSON == .version(json: true), "version --json разбирается")
     check(drivesText == .drivesList(json: false), "drives list разбирается")
     check(drivesJSON == .drivesList(json: true), "drives list --json разбирается")
+    check(quickScan == .quickScan(image: "a.img", json: false), "quick scan разбирается")
+    check(quickScanJSON == .quickScan(image: "a.img", json: true), "quick scan --json разбирается")
+    check(
+        quickRecover == .quickRecover(image: "i.img", output: "result", json: false),
+        "quick recover разбирается"
+    )
+    check(
+        quickRecoverJSON == .quickRecover(image: "i.img", output: "result", json: true),
+        "quick recover --json разбирается"
+    )
 } catch {
     check(false, "валидные аргументы CLI не должны отклоняться")
 }
@@ -191,5 +229,23 @@ expectUsageError(["drives"], "drives без подкоманды отклоня�
 expectUsageError(["drives", "show"], "неизвестная подкоманда drives отклоняется")
 expectUsageError(["version", "--yaml"], "неизвестный параметр CLI отклоняется")
 expectUsageError(["version", "лишний"], "лишний аргумент CLI отклоняется")
+expectUsageError(["quick"], "quick без подкоманды отклоняется")
+expectUsageError(["quick", "show"], "неизвестная подкоманда quick отклоняется")
+expectUsageError(["quick", "scan"], "quick scan без --image отклоняется")
+expectUsageError(["quick", "scan", "--image"], "--image без значения отклоняется")
+expectUsageError(["quick", "scan", "--image", "a.img", "--output", "d"], "--output в scan отклоняется")
+expectUsageError(["quick", "scan", "--image", "a.img", "--all"], "--all в scan отклоняется")
+expectUsageError(["quick", "recover", "--image", "a.img", "--all"], "recover без --output отклоняется")
+expectUsageError(["quick", "recover", "--image", "a.img", "--output", "d"], "recover без --all отклоняется")
+expectUsageError([
+    "quick", "scan", "--image", "a.img", "--image", "b.img"
+], "повторный --image отклоняется")
+expectUsageError(["quick", "scan", "--image", "a.img", "--json", "--yaml"], "неизвестный параметр в quick отклоняется")
+expectUsageError(["quick", "scan", "--image", "--json"], "--image не принимает --json как значение")
+expectUsageError(["quick", "scan", "--image", "--all"], "--image не принимает --all как значение")
+expectUsageError([
+    "quick", "recover", "--image", "i.img", "--output", "--all"
+], "--output не принимает --all как значение")
+expectUsageError(["quick", "scan", "--output", "--image"], "--output не принимает --image как значение")
 
-print("PASS: 39 domain checks")
+print("PASS: 65 domain checks")

@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import RecoveryCore
 
 struct UserFacingFailure: Equatable {
     let title: String
@@ -28,6 +29,8 @@ struct UserFacingFailure: Equatable {
             UserFacingFailure(title: "Нужен другой диск", message: error.localizedDescription)
         case .imageMissing:
             UserFacingFailure(title: "Источник исчез", message: "Выбранный образ больше недоступен. Выберите его заново.")
+        case .imageNotRegularFile:
+            UserFacingFailure(title: "Неверный источник", message: "Укажите обычный файл образа, а не папку или устройство.")
         case .sourceUnavailable, .sourceReadFailed:
             UserFacingFailure(title: "Накопитель отключён", message: error.localizedDescription)
         case .sourceChanged:
