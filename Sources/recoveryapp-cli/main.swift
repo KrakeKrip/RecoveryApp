@@ -77,6 +77,16 @@ func printRecoveryOutcome(_ results: [RecoveredFileResult]) {
     print("Совпадение размеров не является проверкой целостности содержимого.")
 }
 
+/// Пустой результат скана — нормальный код 0: проверки папки и источника
+/// выполняются, восстановление не запускается, JSON отдаёт пустой отчёт.
+func printEmptyRecovery(json: Bool, outputDirectory: String) throws {
+    if json {
+        try printJSON(QuickRecoverReport(outputDirectory: outputDirectory, results: []))
+    } else {
+        print("Удалённые файлы не найдены — восстанавливать нечего.")
+    }
+}
+
 do {
     switch try CommandLineParser.parse(cliArguments) {
     case .help:
@@ -150,20 +160,26 @@ do {
         case .image(let image):
             let imageURL = absoluteFileURL(image)
             let recovery = try makeImageRecovery()
-            let results = try await recovery.recoverDetailed(
-                imageURL: imageURL,
-                outputFolderURL: outputURL,
-                candidates: try await recovery.scan(imageURL: imageURL)
-            )
-            if json {
-                try printJSON(QuickRecoverReport(
-                    outputDirectory: outputURL.path,
-                    results: results
-                ))
-            } else if results.isEmpty {
-                print("Удалённые файлы не найдены — восстанавливать нечего.")
+            let candidates = try await recovery.scan(imageURL: imageURL)
+            if candidates.isEmpty {
+                // Пустой результат — нормальный код 0; папка результата всё
+                // равно проверяется до отчёта.
+                try ImageQuickRecovery.validateOutputFolder(outputURL)
+                try printEmptyRecovery(json: json, outputDirectory: outputURL.path)
             } else {
-                printRecoveryOutcome(results)
+                let results = try await recovery.recoverDetailed(
+                    imageURL: imageURL,
+                    outputFolderURL: outputURL,
+                    candidates: candidates
+                )
+                if json {
+                    try printJSON(QuickRecoverReport(
+                        outputDirectory: outputURL.path,
+                        results: results
+                    ))
+                } else {
+                    printRecoveryOutcome(results)
+                }
             }
         case .drive(let identifier, let expectedName, let expectedSize):
             // Повторное обнаружение и сверка — до Authorization Services;

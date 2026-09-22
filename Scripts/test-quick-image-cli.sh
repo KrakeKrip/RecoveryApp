@@ -72,7 +72,10 @@ for candidate in candidates:
     assert candidate["partitionOffset"] == 0, candidate
     assert candidate["inode"].isdigit(), candidate
     assert candidate["displayName"] == candidate["path"].split("/")[-1], candidate
-    assert isinstance(candidate["expectedSize"], int) and candidate["expectedSize"] >= 0, candidate
+    # Ноль в fls -l означает отсутствие метаданных размера: парсер отдаёт
+    # null (ключ опускается) либо положительное число.
+    expected = candidate.get("expectedSize")
+    assert expected is None or (isinstance(expected, int) and expected > 0), candidate
 print("PASS: quick scan --json FAT32 соответствует схеме с ожидаемыми размерами")
 PY
 
@@ -103,7 +106,7 @@ for path in report["files"]:
 items = report["items"]
 assert len(items) == 3, report
 def expected_status(expected, actual):
-    if expected is None:
+    if expected is None or actual is None:
         return "sizeUnknown"
     if expected == 0 and actual == 0:
         return "expectedEmpty"
@@ -113,14 +116,16 @@ def expected_status(expected, actual):
         return "incomplete"
     return "sizeMismatch"
 by_name = {os.path.basename(item["path"]): item for item in items}
-assert by_name["_MPTY.TXT"]["status"] == "expectedEmpty", by_name
+assert by_name["_MPTY.TXT"].get("expectedSize") is None, by_name
 assert by_name["_MPTY.TXT"]["actualSize"] == 0, by_name
+assert by_name["_MPTY.TXT"]["status"] == "sizeUnknown", by_name
 for item in items:
     actual = os.path.getsize(item["path"])
     assert item["actualSize"] == actual, item
-    assert item["status"] == expected_status(item["expectedSize"], actual), item
+    assert item["status"] == expected_status(item.get("expectedSize"), actual), item
 counts = report["statusCounts"]
-assert counts["expectedEmpty"] == 1, counts
+assert counts["expectedEmpty"] == 0, counts
+assert counts["sizeUnknown"] == 1, counts
 assert sum(counts.values()) == report["recoveredCount"], report
 print("PASS: quick recover --json FAT32 соответствует схеме со статусами")
 PY
@@ -148,6 +153,57 @@ cmp "$test_dir/originals/RECOVERY.TXT" "$test_dir/result/_ECOVERY_2.TXT"
 cmp "$test_dir/originals/REPORT.TXT" "$test_dir/result/_EPORT_2.TXT"
 cmp "$test_dir/originals/EMPTY.TXT" "$test_dir/result/_MPTY_2.TXT"
 print "PASS: повторный запуск не перезаписывает и снова совпадает побайтно"
+
+# 5b. Чистый образ без удалённых записей: код 0 и корректный пустой отчёт.
+clean_image="$test_dir/clean.img"
+mformat -i "$clean_image" -C -F -v CLEAN -T 262144 ::
+mkdir -p "$test_dir/result-clean"
+"$cli" quick scan --image "$clean_image" --json > "$test_dir/clean-scan.json" \
+    2> "$test_dir/clean-scan.err"
+[[ ! -s "$test_dir/clean-scan.err" ]] || fail "scan чистого образа: stderr должен быть пустым"
+python3 - "$test_dir/clean-scan.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    report = json.load(handle)
+assert report["schemaVersion"] == 1, report
+assert report["candidates"] == [], report
+print("PASS: чистый образ даёт пустой список кандидатов")
+PY
+set +e
+"$cli" quick recover --image "$clean_image" --output "$test_dir/result-clean" --all --json \
+    > "$test_dir/clean-recover.json" 2> "$test_dir/clean-recover.err"
+clean_rc=$?
+set -e
+[[ "$clean_rc" -eq 0 ]] \
+    || fail "пустой recover должен завершаться кодом 0 (получен $clean_rc)"
+python3 - "$test_dir/clean-recover.json" "$test_dir/result-clean" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    report = json.load(handle)
+assert report["schemaVersion"] == 1, report
+assert report["outputDirectory"] == sys.argv[2], report
+assert report["recoveredCount"] == 0, report
+assert report["files"] == [] and report["items"] == [], report
+assert report["statusCounts"] == {
+    "expectedEmpty": 0, "sizeMatches": 0, "incomplete": 0,
+    "sizeMismatch": 0, "sizeUnknown": 0
+}, report
+print("PASS: пустой JSON-отчёт корректен")
+PY
+clean_text="$("$cli" quick recover --image "$clean_image" --output "$test_dir/result-clean" --all 2>/dev/null)"
+[[ "$clean_text" == *"Удалённые файлы не найдены — восстанавливать нечего."* ]] \
+    || fail "текстовый режим пустого recover: $clean_text"
+set +e
+"$cli" quick recover --image "$clean_image" --output "$test_dir/absent-clean" --all >/dev/null 2>&1
+absent_rc=$?
+set -e
+[[ "$absent_rc" -eq 1 ]] \
+    || fail "пустой recover с несуществующей папкой должен давать код 1 (получен $absent_rc)"
+print "PASS: пустой результат — код 0, валидация папки результата сохранена"
 
 # 6. Синтетический GPT/exFAT из зафиксированной фикстуры: реальные размеры
 #    в метаданных дают статус sizeMatches.

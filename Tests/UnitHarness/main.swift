@@ -79,7 +79,9 @@ let longParsed = SleuthKitOutputParser.deletedFiles(
 )
 check(longParsed.count == 2, "длинный fls отфильтровывает каталоги")
 check(longParsed[0].path == "_.TXT", "длинный fls сохраняет путь")
-check(longParsed[0].expectedSize == 0, "нулевой ожидаемый размер читается как 0")
+check(longParsed[0].expectedSize == nil,
+      "ноль в колонке размера fls -l трактуется как неизвестный размер")
+check(longParsed[0].displayName == "_.TXT", "длинный fls сохраняет имя")
 check(longParsed[1].expectedSize == 26672, "положительный ожидаемый размер извлекается")
 check(longParsed[1].inode == "419", "длинный fls сохраняет inode")
 let tabbedNameOutput = "r/r * 9:\tMY FILE\tWITH\tTAB\t2026-09-12 15:13:52 (MSK)\t2026-09-12 00:00:00 (MSK)\t0000-00-00 00:00:00 (UTC)\t2026-09-12 15:13:52 (MSK)\t512\t0\t0"
@@ -102,6 +104,10 @@ check(RecoveredFileSizeClassifier.status(expectedSize: nil, actualSize: 4096) ==
       "неизвестный ожидаемый размер — sizeUnknown")
 check(RecoveredFileSizeClassifier.status(expectedSize: 0, actualSize: 4096) == .sizeMismatch,
       "нулевой источник с непустым результатом — sizeMismatch")
+check(RecoveredFileSizeClassifier.status(expectedSize: 229, actualSize: nil) == .sizeUnknown,
+      "неизвестный фактический размер не маркируется как сверенный")
+check(RecoveredFileSizeClassifier.status(expectedSize: 0, actualSize: nil) == .sizeUnknown,
+      "неизвестный фактический размер при нулевом ожидании — sizeUnknown")
 
 let mmlsOutput = """
 004:  000       0000002048   0000249855   0000247808
@@ -463,4 +469,4 @@ expectUsageError([
     "quick", "recover", "--drive", "disk4", "--expected-name", "N", "--expected-size", "5", "--output", "d"
 ], "recover --drive без --all отклоняется")
 
-print("PASS: 113 domain checks")
+print("PASS: 115 domain checks")

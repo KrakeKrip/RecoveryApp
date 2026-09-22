@@ -121,16 +121,23 @@ public enum SleuthKitOutputParser {
             // Короткий формат: rest — только имя. Длинный (`fls -l`, минимум
             // 8 колонок): имя, четыре времени, размер, gid, uid — размер
             // всегда третий с конца, поэтому лишние табуляции внутри имени
-            // не ломают разбор.
+            // не ломают разбор. Ноль в колонке размера означает, что TSK не
+            // заполнил метаданные записи; истинный ноль по нему отличить
+            // нельзя, поэтому он трактуется как неизвестный размер.
             let columns = rest.split(
                 separator: "\t",
                 omittingEmptySubsequences: false
             ).map(String.init)
             var path = rest
             var expectedSize: Int64?
-            if columns.count >= 8, let size = Int64(columns[columns.count - 3]) {
-                expectedSize = size
+            if columns.count >= 8 {
                 path = columns[0..<(columns.count - 7)].joined(separator: "\t")
+                // Ноль в колонке размера означает, что TSK не заполнил
+                // метаданные записи; истинный ноль по нему отличить нельзя,
+                // поэтому он трактуется как неизвестный размер.
+                if let size = Int64(columns[columns.count - 3]), size > 0 {
+                    expectedSize = size
+                }
             }
             guard !path.isEmpty else { return nil }
             return DeletedFileCandidate(
@@ -170,8 +177,10 @@ public enum RecoveredFileSizeStatus: String, Sendable {
 }
 
 public enum RecoveredFileSizeClassifier {
-    public static func status(expectedSize: Int64?, actualSize: Int64) -> RecoveredFileSizeStatus {
-        guard let expectedSize else { return .sizeUnknown }
+    /// `actualSize == nil` (атрибуты файла прочитать не удалось) трактуется
+    /// как неизвестный результат независимо от ожиданий.
+    public static func status(expectedSize: Int64?, actualSize: Int64?) -> RecoveredFileSizeStatus {
+        guard let actualSize, let expectedSize else { return .sizeUnknown }
         if expectedSize == 0, actualSize == 0 { return .expectedEmpty }
         if actualSize == expectedSize { return .sizeMatches }
         if actualSize < expectedSize { return .incomplete }
@@ -181,13 +190,14 @@ public enum RecoveredFileSizeClassifier {
 
 /// Итог одного опубликованного файла: размерная сверка выполняется после
 /// публикации; короткий результат сохраняется и помечается `incomplete`.
+/// `actualSize == nil` — размер опубликованного файла прочитать не удалось.
 public struct RecoveredFileResult: Sendable {
     public let url: URL
     public let expectedSize: Int64?
-    public let actualSize: Int64
+    public let actualSize: Int64?
     public let status: RecoveredFileSizeStatus
 
-    public init(url: URL, expectedSize: Int64?, actualSize: Int64, status: RecoveredFileSizeStatus) {
+    public init(url: URL, expectedSize: Int64?, actualSize: Int64?, status: RecoveredFileSizeStatus) {
         self.url = url
         self.expectedSize = expectedSize
         self.actualSize = actualSize
@@ -437,10 +447,11 @@ public final class ImageQuickRecovery: @unchecked Sendable {
                 }
                 try FileManager.default.moveItem(at: partialURL, to: resultURL)
                 // Код 0 от icat не гарантирует полноту: сверяем фактический
-                // размер с ожидаемым из метаданных и помечаем результат.
-                let actualSize = (try? FileManager.default.attributesOfItem(
+                // размер с ожидаемым из метаданных. Если атрибуты прочитать
+                // не удалось, размер остаётся неизвестным (nil), а не нулём.
+                let actualSize = try? FileManager.default.attributesOfItem(
                     atPath: resultURL.path
-                )[.size] as? Int64) ?? 0
+                )[.size] as? Int64
                 let status = RecoveredFileSizeClassifier.status(
                     expectedSize: candidate.expectedSize,
                     actualSize: actualSize

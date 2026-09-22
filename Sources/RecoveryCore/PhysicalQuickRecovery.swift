@@ -295,10 +295,11 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
                 try mapHelperFailure(result, toolName: "icat", allowToolFailure: false)
                 try FileManager.default.moveItem(at: partialURL, to: resultURL)
                 // Код 0 helper не гарантирует полноту файла: сверяем
-                // фактический размер с ожидаемым из метаданных.
-                let actualSize = (try? FileManager.default.attributesOfItem(
+                // фактический размер с ожидаемым из метаданных. Если атрибуты
+                // прочитать не удалось, размер остаётся неизвестным (nil).
+                let actualSize = try? FileManager.default.attributesOfItem(
                     atPath: resultURL.path
-                )[.size] as? Int64) ?? 0
+                )[.size] as? Int64
                 let status = RecoveredFileSizeClassifier.status(
                     expectedSize: candidate.expectedSize,
                     actualSize: actualSize

@@ -82,7 +82,7 @@ struct QuickCandidateReport: Encodable {
 struct RecoveredFileItemReport: Encodable {
     let path: String
     let expectedSize: Int64?
-    let actualSize: Int64
+    let actualSize: Int64?
     let status: String
 
     init(_ result: RecoveredFileResult) {
