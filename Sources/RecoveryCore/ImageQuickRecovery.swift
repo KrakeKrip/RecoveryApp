@@ -88,7 +88,7 @@ public enum DeletedFilesError: LocalizedError, Equatable {
         case .sourceReadFailed:
             "Накопитель стал недоступен во время чтения. Подключите его заново."
         case .cancelled:
-            "Операция остановлена. Уже готовые файлы сохранены."
+            "Операция остановлена."
         case .nothingSelected:
             "Выберите хотя бы один файл для восстановления."
         }

@@ -292,6 +292,10 @@ check(
     "отключение накопителя объясняется"
 )
 check(
+    DeletedFilesError.cancelled.localizedDescription == "Операция остановлена.",
+    "остановка поиска не обещает сохранённые файлы"
+)
+check(
     UserFacingFailure.make(from: VideoRepairError.inputMissing).title == "Исходный файл исчез",
     "исчезнувший видеофайл объясняется"
 )
@@ -414,4 +418,4 @@ expectUsageError([
     "quick", "recover", "--drive", "disk4", "--expected-name", "N", "--expected-size", "5", "--output", "d"
 ], "recover --drive без --all отклоняется")
 
-print("PASS: 95 domain checks")
+print("PASS: 96 domain checks")
