@@ -50,8 +50,31 @@ func printCandidates(_ candidates: [DeletedFileCandidate]) {
         let offset = candidate.partitionOffset > 0
             ? "смещение \(candidate.partitionOffset)"
             : "без таблицы разделов"
-        print("  [\(candidate.filesystemType), \(offset)] \(candidate.path)")
+        let size = candidate.expectedSize != nil
+            ? ", ожидаемый размер \(candidate.expectedSize!)"
+            : ", размер неизвестен"
+        print("  [\(candidate.filesystemType), \(offset)\(size)] \(candidate.path)")
     }
+}
+
+func printRecoveryOutcome(_ results: [RecoveredFileResult]) {
+    print("Восстановлено файлов: \(results.count).")
+    for result in results {
+        print("  [\(result.status.rawValue)] \(result.url.path)")
+    }
+    let incomplete = results.filter { $0.status == .incomplete }
+    let mismatched = results.filter { $0.status == .sizeMismatch }
+    let unknown = results.filter { $0.status == .sizeUnknown }
+    if !incomplete.isEmpty {
+        print("Внимание: \(incomplete.count) извлечены не полностью — фактический размер меньше ожидаемого из метаданных.")
+    }
+    if !mismatched.isEmpty {
+        print("Внимание: \(mismatched.count) файл(ов) больше ожидаемого размера из метаданных.")
+    }
+    if !unknown.isEmpty {
+        print("Размер источника неизвестен для \(unknown.count) файл(ов) — размерная сверка невозможна.")
+    }
+    print("Совпадение размеров не является проверкой целостности содержимого.")
 }
 
 do {
@@ -127,28 +150,20 @@ do {
         case .image(let image):
             let imageURL = absoluteFileURL(image)
             let recovery = try makeImageRecovery()
-            let candidates = try await recovery.scan(imageURL: imageURL)
-            let recovered: [URL] = candidates.isEmpty
-                ? []
-                : try await recovery.recover(
-                    imageURL: imageURL,
-                    outputFolderURL: outputURL,
-                    candidates: candidates
-                )
+            let results = try await recovery.recoverDetailed(
+                imageURL: imageURL,
+                outputFolderURL: outputURL,
+                candidates: try await recovery.scan(imageURL: imageURL)
+            )
             if json {
                 try printJSON(QuickRecoverReport(
-                    schemaVersion: 1,
                     outputDirectory: outputURL.path,
-                    recoveredCount: recovered.count,
-                    files: recovered.map(\.path)
+                    results: results
                 ))
-            } else if recovered.isEmpty {
+            } else if results.isEmpty {
                 print("Удалённые файлы не найдены — восстанавливать нечего.")
             } else {
-                print("Восстановлено файлов: \(recovered.count).")
-                for file in recovered {
-                    print("  \(file.path)")
-                }
+                printRecoveryOutcome(results)
             }
         case .drive(let identifier, let expectedName, let expectedSize):
             // Повторное обнаружение и сверка — до Authorization Services;
@@ -168,9 +183,9 @@ do {
             )
             let recovery = try makePhysicalRecovery()
             let candidates = try await recovery.scan(drive: drive, onOutput: progressToStderr)
-            let recovered: [URL] = candidates.isEmpty
+            let results: [RecoveredFileResult] = candidates.isEmpty
                 ? []
-                : try await recovery.recover(
+                : try await recovery.recoverDetailed(
                     drive: drive,
                     outputFolderURL: outputURL,
                     candidates: candidates,
@@ -178,18 +193,13 @@ do {
                 )
             if json {
                 try printJSON(QuickRecoverReport(
-                    schemaVersion: 1,
                     outputDirectory: outputURL.path,
-                    recoveredCount: recovered.count,
-                    files: recovered.map(\.path)
+                    results: results
                 ))
-            } else if recovered.isEmpty {
+            } else if results.isEmpty {
                 print("Удалённые файлы не найдены — восстанавливать нечего.")
             } else {
-                print("Восстановлено файлов: \(recovered.count).")
-                for file in recovered {
-                    print("  \(file.path)")
-                }
+                printRecoveryOutcome(results)
             }
         }
     }

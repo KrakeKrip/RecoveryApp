@@ -276,12 +276,14 @@ int main(int argc, char **argv) {
     if (strcmp(argv[1], "mmls") == 0) {
         execl(tool, tool, fd_path, (char *)NULL);
     } else if (strcmp(argv[1], "fls") == 0) {
+        /* -l adds the long listing so callers can compare the recovered size
+         * with the size recorded in filesystem metadata. */
         if (strcmp(argv[4], "0") == 0) {
-            execl(tool, tool, "-f", argv[5], "-r", "-d", "-p", fd_path,
+            execl(tool, tool, "-f", argv[5], "-l", "-r", "-d", "-p", fd_path,
                   (char *)NULL);
         } else {
-            execl(tool, tool, "-f", argv[5], "-o", argv[4], "-r", "-d", "-p",
-                  fd_path, (char *)NULL);
+            execl(tool, tool, "-f", argv[5], "-l", "-o", argv[4], "-r", "-d",
+                  "-p", fd_path, (char *)NULL);
         }
     } else if (strcmp(argv[5], "0") == 0) {
         execl(tool, tool, "-f", argv[7], "-r", fd_path, argv[6], (char *)NULL);

@@ -98,9 +98,15 @@ expected_size="$(stat -f %z "$image")"
     > "$test_dir/helper-fls.stdout"
 inode="$(awk '/_ECOVERY.TXT/{gsub(":", "", $3); print $3}' "$test_dir/helper-fls.stdout")"
 test -n "$inode"
+# Helper добавляет -l: колонка ожидаемого размера должна присутствовать.
+helper_size="$(awk '/_ECOVERY.TXT/{print $(NF-2)}' "$test_dir/helper-fls.stdout")"
+[[ "$helper_size" -gt 0 ]] \
+    || fail "helper fls -l должен показывать ожидаемый размер записи"
 "$helper_dir/recoveryapp-metadata-helper" icat "$image" "$expected_size" "$test_dir/result" 0 "$inode" fat32 \
     > "$test_dir/result/_ECOVERY.TXT"
 cmp "$test_dir/original.txt" "$test_dir/result/_ECOVERY.TXT"
+[[ "$(stat -f %z "$test_dir/result/_ECOVERY.TXT")" -eq "$helper_size" ]] \
+    || fail "фактический размер результата должен совпадать с размером из fls -l"
 print "PASS: metadata helper на обычном образе находит и восстанавливает побайтно"
 
 # 5. Helper продолжает отклонять подмену размера источника.

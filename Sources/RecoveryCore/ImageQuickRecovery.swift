@@ -6,19 +6,24 @@ public struct DeletedFileCandidate: Identifiable, Hashable, Sendable {
     public let inode: String
     public let partitionOffset: Int64
     public let filesystemType: String
+    /// Ожидаемый размер из колонки размера `fls -l`; nil, когда источник
+    /// размера недоступен (короткий формат или неразбираемая колонка).
+    public let expectedSize: Int64?
 
     public init(
         id: String,
         path: String,
         inode: String,
         partitionOffset: Int64,
-        filesystemType: String = ""
+        filesystemType: String = "",
+        expectedSize: Int64? = nil
     ) {
         self.id = id
         self.path = path
         self.inode = inode
         self.partitionOffset = partitionOffset
         self.filesystemType = filesystemType
+        self.expectedSize = expectedSize
     }
 
     public var displayName: String {
@@ -105,19 +110,36 @@ public enum SleuthKitOutputParser {
             let line = String(rawLine)
             guard let tab = line.firstIndex(of: "\t") else { return nil }
             let metadata = String(line[..<tab])
-            let path = String(line[line.index(after: tab)...])
+            let rest = String(line[line.index(after: tab)...])
             guard metadata.contains("*"), !metadata.hasPrefix("d/d") else { return nil }
             guard let star = metadata.firstIndex(of: "*") else { return nil }
             let afterStar = metadata[metadata.index(after: star)...]
                 .trimmingCharacters(in: .whitespaces)
-            guard afterStar.hasSuffix(":"), !path.isEmpty else { return nil }
+            guard afterStar.hasSuffix(":"), !rest.isEmpty else { return nil }
             let inode = String(afterStar.dropLast())
+
+            // Короткий формат: rest — только имя. Длинный (`fls -l`, минимум
+            // 8 колонок): имя, четыре времени, размер, gid, uid — размер
+            // всегда третий с конца, поэтому лишние табуляции внутри имени
+            // не ломают разбор.
+            let columns = rest.split(
+                separator: "\t",
+                omittingEmptySubsequences: false
+            ).map(String.init)
+            var path = rest
+            var expectedSize: Int64?
+            if columns.count >= 8, let size = Int64(columns[columns.count - 3]) {
+                expectedSize = size
+                path = columns[0..<(columns.count - 7)].joined(separator: "\t")
+            }
+            guard !path.isEmpty else { return nil }
             return DeletedFileCandidate(
                 id: "\(partitionOffset):\(inode):\(path)",
                 path: path,
                 inode: inode,
                 partitionOffset: partitionOffset,
-                filesystemType: filesystemType
+                filesystemType: filesystemType,
+                expectedSize: expectedSize
             )
         }
     }
@@ -133,6 +155,43 @@ public enum SleuthKitOutputParser {
                   offset > 0 else { return nil }
             return offset
         }
+    }
+}
+
+/// Статус соответствия фактического размера результата ожидаемому из
+/// метаданных. Совпадение размеров не является побайтной проверкой
+/// целостности: метаданные файловой системы могут быть неполными.
+public enum RecoveredFileSizeStatus: String, Sendable {
+    case expectedEmpty
+    case sizeMatches
+    case incomplete
+    case sizeMismatch
+    case sizeUnknown
+}
+
+public enum RecoveredFileSizeClassifier {
+    public static func status(expectedSize: Int64?, actualSize: Int64) -> RecoveredFileSizeStatus {
+        guard let expectedSize else { return .sizeUnknown }
+        if expectedSize == 0, actualSize == 0 { return .expectedEmpty }
+        if actualSize == expectedSize { return .sizeMatches }
+        if actualSize < expectedSize { return .incomplete }
+        return .sizeMismatch
+    }
+}
+
+/// Итог одного опубликованного файла: размерная сверка выполняется после
+/// публикации; короткий результат сохраняется и помечается `incomplete`.
+public struct RecoveredFileResult: Sendable {
+    public let url: URL
+    public let expectedSize: Int64?
+    public let actualSize: Int64
+    public let status: RecoveredFileSizeStatus
+
+    public init(url: URL, expectedSize: Int64?, actualSize: Int64, status: RecoveredFileSizeStatus) {
+        self.url = url
+        self.expectedSize = expectedSize
+        self.actualSize = actualSize
+        self.status = status
     }
 }
 
@@ -227,6 +286,23 @@ public final class ImageQuickRecovery: @unchecked Sendable {
         candidates: [DeletedFileCandidate],
         onOutput: @escaping @MainActor @Sendable (String) -> Void = { _ in }
     ) async throws -> [URL] {
+        try await recoverDetailed(
+            imageURL: imageURL,
+            outputFolderURL: outputFolderURL,
+            candidates: candidates,
+            onOutput: onOutput
+        ).map(\.url)
+    }
+
+    /// Детальный восстановительный проход: публикует каждый файл и возвращает
+    /// размерную сверку по нему. Короткий результат сохраняется в папке и
+    /// помечается `incomplete`; `.partial` удаляется только при ошибке/отмене.
+    public func recoverDetailed(
+        imageURL: URL,
+        outputFolderURL: URL,
+        candidates: [DeletedFileCandidate],
+        onOutput: @escaping @MainActor @Sendable (String) -> Void = { _ in }
+    ) async throws -> [RecoveredFileResult] {
         guard outputFolderURL.standardizedFileURL.path != imageURL.standardizedFileURL.path else {
             throw DeletedFilesError.outputFolderMissing
         }
@@ -301,7 +377,7 @@ public final class ImageQuickRecovery: @unchecked Sendable {
         offset: Int64
     ) throws -> [DeletedFileCandidate]? {
         for filesystemType in ["fat32", "exfat"] {
-            var arguments = ["-f", filesystemType, "-r", "-d", "-p"]
+            var arguments = ["-f", filesystemType, "-l", "-r", "-d", "-p"]
             if offset > 0 {
                 arguments += ["-o", String(offset)]
             }
@@ -323,8 +399,8 @@ public final class ImageQuickRecovery: @unchecked Sendable {
         outputFolderURL: URL,
         candidates: [DeletedFileCandidate],
         onOutput: @escaping @MainActor @Sendable (String) -> Void
-    ) throws -> [URL] {
-        var results: [URL] = []
+    ) throws -> [RecoveredFileResult] {
+        var results: [RecoveredFileResult] = []
         for (index, candidate) in candidates.enumerated() {
             try checkCancelled()
             let resultURL = Self.uniqueResultURL(
@@ -360,7 +436,21 @@ public final class ImageQuickRecovery: @unchecked Sendable {
                     throw DeletedFilesError.toolFailed("icat", result.status)
                 }
                 try FileManager.default.moveItem(at: partialURL, to: resultURL)
-                results.append(resultURL)
+                // Код 0 от icat не гарантирует полноту: сверяем фактический
+                // размер с ожидаемым из метаданных и помечаем результат.
+                let actualSize = (try? FileManager.default.attributesOfItem(
+                    atPath: resultURL.path
+                )[.size] as? Int64) ?? 0
+                let status = RecoveredFileSizeClassifier.status(
+                    expectedSize: candidate.expectedSize,
+                    actualSize: actualSize
+                )
+                results.append(RecoveredFileResult(
+                    url: resultURL,
+                    expectedSize: candidate.expectedSize,
+                    actualSize: actualSize,
+                    status: status
+                ))
             } catch {
                 try? FileManager.default.removeItem(at: partialURL)
                 throw error

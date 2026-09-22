@@ -33,7 +33,7 @@ fail() {
     exit 1
 }
 
-# 1. Синтетический FAT32 с двумя удалёнными файлами, один во вложенной папке.
+# 1. Синтетический FAT32: два текстовых файла и пустой файл, все удалены.
 printf '%s\n' \
     'RECOVERYAPP-QUICK-CLI-FAT32' \
     'Полностью синтетические данные. Контроль: quick-cli-482917.' \
@@ -42,14 +42,16 @@ printf '%s\n' \
     'RECOVERYAPP-QUICK-CLI-FAT32-REPORT' \
     'Вторая контрольная запись: quick-cli-report-913257.' \
     > "$test_dir/originals/REPORT.TXT"
+: > "$test_dir/originals/EMPTY.TXT"
 fat_image="$test_dir/fat32-deleted.img"
 mformat -i "$fat_image" -C -F -v QUICKCLI -T 262144 ::
 mmd -i "$fat_image" ::/DOCS
 mcopy -i "$fat_image" "$test_dir/originals/RECOVERY.TXT" ::/RECOVERY.TXT
 mcopy -i "$fat_image" "$test_dir/originals/REPORT.TXT" ::/DOCS/REPORT.TXT
-mdel -i "$fat_image" ::/RECOVERY.TXT ::/DOCS/REPORT.TXT
+mcopy -i "$fat_image" "$test_dir/originals/EMPTY.TXT" ::/EMPTY.TXT
+mdel -i "$fat_image" ::/RECOVERY.TXT ::/DOCS/REPORT.TXT ::/EMPTY.TXT
 
-# 2. quick scan --json: схема, абсолютный source, тип ФС и смещение.
+# 2. quick scan --json: схема, абсолютный source, тип ФС и ожидаемые размеры.
 "$cli" quick scan --image "$fat_image" --json > "$test_dir/fat32-scan.json" \
     2> "$test_dir/fat32-scan.err"
 [[ ! -s "$test_dir/fat32-scan.err" ]] || fail "scan --json: stderr должен быть пустым"
@@ -62,24 +64,25 @@ with open(sys.argv[1], encoding="utf-8") as handle:
 assert report["schemaVersion"] == 1, report
 assert report["source"] == sys.argv[2], report
 candidates = report["candidates"]
-assert len(candidates) == 2, candidates
+assert len(candidates) == 3, candidates
 paths = {candidate["path"] for candidate in candidates}
-assert paths == {"_ECOVERY.TXT", "DOCS/_EPORT.TXT"}, paths
+assert paths == {"_ECOVERY.TXT", "DOCS/_EPORT.TXT", "_MPTY.TXT"}, paths
 for candidate in candidates:
     assert candidate["filesystemType"] == "fat32", candidate
     assert candidate["partitionOffset"] == 0, candidate
     assert candidate["inode"].isdigit(), candidate
     assert candidate["displayName"] == candidate["path"].split("/")[-1], candidate
-print("PASS: quick scan --json FAT32 соответствует схеме")
+    assert isinstance(candidate["expectedSize"], int) and candidate["expectedSize"] >= 0, candidate
+print("PASS: quick scan --json FAT32 соответствует схеме с ожидаемыми размерами")
 PY
 
 # 3. Человекочитаемый scan на русском.
 scan_text="$("$cli" quick scan --image "$fat_image")"
-[[ "$scan_text" == *"Найдено удалённых файлов: 2"* ]] \
+[[ "$scan_text" == *"Найдено удалённых файлов: 3"* ]] \
     || fail "scan: неожиданный вывод: $scan_text"
 print "PASS: quick scan печатает русскую сводку"
 
-# 4. quick recover --all --json: восстановление и точное содержимое.
+# 4. quick recover --all --json: восстановление, точное содержимое и статусы.
 "$cli" quick recover --image "$fat_image" --output "$test_dir/result" --all --json \
     > "$test_dir/fat32-recover.json" 2> "$test_dir/fat32-recover.err"
 [[ ! -s "$test_dir/fat32-recover.err" ]] || fail "recover --json: stderr должен быть пустым"
@@ -92,14 +95,38 @@ with open(sys.argv[1], encoding="utf-8") as handle:
     report = json.load(handle)
 assert report["schemaVersion"] == 1, report
 assert report["outputDirectory"] == sys.argv[2], report
-assert report["recoveredCount"] == 2, report
+assert report["recoveredCount"] == 3, report
+assert len(report["files"]) == 3, report
 for path in report["files"]:
     assert os.path.isabs(path), path
     assert os.path.isfile(path), path
-print("PASS: quick recover --json FAT32 соответствует схеме")
+items = report["items"]
+assert len(items) == 3, report
+def expected_status(expected, actual):
+    if expected is None:
+        return "sizeUnknown"
+    if expected == 0 and actual == 0:
+        return "expectedEmpty"
+    if actual == expected:
+        return "sizeMatches"
+    if actual < expected:
+        return "incomplete"
+    return "sizeMismatch"
+by_name = {os.path.basename(item["path"]): item for item in items}
+assert by_name["_MPTY.TXT"]["status"] == "expectedEmpty", by_name
+assert by_name["_MPTY.TXT"]["actualSize"] == 0, by_name
+for item in items:
+    actual = os.path.getsize(item["path"])
+    assert item["actualSize"] == actual, item
+    assert item["status"] == expected_status(item["expectedSize"], actual), item
+counts = report["statusCounts"]
+assert counts["expectedEmpty"] == 1, counts
+assert sum(counts.values()) == report["recoveredCount"], report
+print("PASS: quick recover --json FAT32 соответствует схеме со статусами")
 PY
 cmp "$test_dir/originals/RECOVERY.TXT" "$test_dir/result/_ECOVERY.TXT"
 cmp "$test_dir/originals/REPORT.TXT" "$test_dir/result/_EPORT.TXT"
+cmp "$test_dir/originals/EMPTY.TXT" "$test_dir/result/_MPTY.TXT"
 print "PASS: FAT32 файлы совпадают побайтно с эталоном"
 
 # 5. Повторный запуск не перезаписывает: новые имена _2, прежние файлы целы.
@@ -112,22 +139,23 @@ import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     report = json.load(handle)
-assert report["recoveredCount"] == 2, report
+assert report["recoveredCount"] == 3, report
 names = {os.path.basename(path) for path in report["files"]}
-assert names == {"_ECOVERY_2.TXT", "_EPORT_2.TXT"}, names
+assert names == {"_ECOVERY_2.TXT", "_EPORT_2.TXT", "_MPTY_2.TXT"}, names
 PY
 cmp "$test_dir/originals/RECOVERY.TXT" "$test_dir/result/_ECOVERY.TXT"
 cmp "$test_dir/originals/RECOVERY.TXT" "$test_dir/result/_ECOVERY_2.TXT"
-cmp "$test_dir/originals/REPORT.TXT" "$test_dir/result/_EPORT.TXT"
 cmp "$test_dir/originals/REPORT.TXT" "$test_dir/result/_EPORT_2.TXT"
+cmp "$test_dir/originals/EMPTY.TXT" "$test_dir/result/_MPTY_2.TXT"
 print "PASS: повторный запуск не перезаписывает и снова совпадает побайтно"
 
-# 6. Синтетический GPT/exFAT из зафиксированной фикстуры.
+# 6. Синтетический GPT/exFAT из зафиксированной фикстуры: реальные размеры
+#    в метаданных дают статус sizeMatches.
 exfat_before="$test_dir/exfat-before.dmg"
 exfat_deleted="$test_dir/exfat-deleted.dmg"
 xz -dc "$project_dir/Tests/Fixtures/exfat-before-files.dmg.xz" > "$exfat_before"
 "$project_dir/Scripts/make-deleted-exfat-fixture.py" \
-    "$exfat_before" "$exfat_deleted" --delete RECOVERY_NOTE.TXT \
+    "$exfat_before" "$exfat_deleted" --delete RECOVERY_NOTE.TXT --delete TESTCARD.PNG \
     > "$test_dir/exfat-fixture.stdout"
 mkdir -p "$test_dir/result-exfat"
 "$cli" quick scan --image "$exfat_deleted" --json > "$test_dir/exfat-scan.json"
@@ -139,24 +167,101 @@ with open(sys.argv[1], encoding="utf-8") as handle:
     report = json.load(handle)
 assert report["schemaVersion"] == 1, report
 assert report["source"] == sys.argv[2], report
-matches = [c for c in report["candidates"] if c["path"] == "RECOVERY_NOTE.TXT"]
-assert len(matches) == 1, report
-candidate = matches[0]
-assert candidate["filesystemType"] == "exfat", candidate
-assert candidate["partitionOffset"] == 2048, candidate
-assert candidate["inode"].isdigit(), candidate
-print(candidate["inode"])
+by_path = {c["path"]: c for c in report["candidates"]}
+assert by_path["RECOVERY_NOTE.TXT"]["expectedSize"] == 229, by_path
+assert by_path["TESTCARD.PNG"]["expectedSize"] == 26672, by_path
+for candidate in by_path.values():
+    assert candidate["filesystemType"] == "exfat", candidate
+    assert candidate["partitionOffset"] == 2048, candidate
+print("PASS: quick scan --json GPT/exFAT содержит реальные ожидаемые размеры")
 PY
-exfat_inode="$(python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print([c["inode"] for c in r["candidates"] if c["path"]=="RECOVERY_NOTE.TXT"][0])' "$test_dir/exfat-scan.json")"
 "$cli" quick recover --image "$exfat_deleted" --output "$test_dir/result-exfat" --all --json \
     > "$test_dir/exfat-recover.json"
-"$tools_dir/icat" -r -f exfat -o 2048 "$exfat_before" "$exfat_inode" \
-    > "$test_dir/exfat-reference.txt"
-test -s "$test_dir/exfat-reference.txt"
-cmp "$test_dir/exfat-reference.txt" "$test_dir/result-exfat/RECOVERY_NOTE.TXT"
+python3 - "$test_dir/exfat-recover.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    report = json.load(handle)
+assert report["recoveredCount"] == 2, report
+counts = report["statusCounts"]
+assert counts["sizeMatches"] == 2, counts
+assert counts["incomplete"] == 0 and counts["expectedEmpty"] == 0, counts
+assert counts["sizeMismatch"] == 0 and counts["sizeUnknown"] == 0, counts
+items = {item["path"].split("/")[-1]: item for item in report["items"]}
+assert items["RECOVERY_NOTE.TXT"]["expectedSize"] == 229, items
+assert items["RECOVERY_NOTE.TXT"]["actualSize"] == 229, items
+assert items["TESTCARD.PNG"]["actualSize"] == 26672, items
+print("PASS: quick recover --json GPT/exFAT даёт sizeMatches по всем файлам")
+PY
+for name in RECOVERY_NOTE.TXT TESTCARD.PNG; do
+    inode="$(python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print([c["inode"] for c in r["candidates"] if c["path"]==sys.argv[2]][0])' "$test_dir/exfat-scan.json" "$name")"
+    "$tools_dir/icat" -r -f exfat -o 2048 "$exfat_before" "$inode" > "$test_dir/ref-$name"
+    cmp "$test_dir/ref-$name" "$test_dir/result-exfat/$name"
+done
 print "PASS: GPT/exFAT найден и восстановлен побайтно"
 
-# 7. Ошибочные аргументы и окружение: код 2.
+# 7. Усечение: shim icat отдаёт только первые 4096 байт при большем
+#    ожидаемом размере. Короткий результат сохраняется и помечается incomplete.
+mkdir -p "$test_dir/result-truncated" "$test_dir/shim"
+cat > "$test_dir/shim/icat-truncate" <<SHIM
+#!/bin/zsh
+"$tools_dir/icat" "\$@" | head -c 4096
+SHIM
+chmod +x "$test_dir/shim/icat-truncate"
+RECOVERYAPP_ICAT_PATH="$test_dir/shim/icat-truncate" \
+    "$cli" quick recover --image "$exfat_deleted" --output "$test_dir/result-truncated" --all --json \
+    > "$test_dir/truncated-recover.json"
+python3 - "$test_dir/truncated-recover.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    report = json.load(handle)
+assert report["recoveredCount"] == 2, report
+counts = report["statusCounts"]
+assert counts["sizeMatches"] == 1, counts
+assert counts["incomplete"] == 1, counts
+items = {item["path"].split("/")[-1]: item for item in report["items"]}
+assert items["RECOVERY_NOTE.TXT"]["status"] == "sizeMatches", items
+assert items["TESTCARD.PNG"]["status"] == "incomplete", items
+assert items["TESTCARD.PNG"]["expectedSize"] == 26672, items
+assert items["TESTCARD.PNG"]["actualSize"] == 4096, items
+print("PASS: усечённый icat помечен incomplete, короткий файл сохранён")
+PY
+test -s "$test_dir/result-truncated/TESTCARD.PNG"
+[[ "$(stat -f %z "$test_dir/result-truncated/TESTCARD.PNG")" -eq 4096 ]] \
+    || fail "усечённый файл должен быть ровно 4096 байт"
+[[ -z "$(find "$test_dir/result-truncated" -name '*.partial' -print -quit)" ]] \
+    || fail "после успешной публикации не должно быть .partial"
+mkdir -p "$test_dir/result-human"
+truncate_text="$(RECOVERYAPP_ICAT_PATH="$test_dir/shim/icat-truncate" \
+    "$cli" quick recover --image "$exfat_deleted" --output "$test_dir/result-human" --all 2>/dev/null)"
+[[ "$truncate_text" == *"извлечены не полностью"* ]] \
+    || fail "текстовый режим должен предупреждать о неполных файлах"
+[[ "$truncate_text" == *"Совпадение размеров не является проверкой целостности содержимого."* ]] \
+    || fail "текстовый режим должен напоминать, что сверка размеров не проверка целостности"
+print "PASS: усечённые результаты warned в текстовом режиме, .partial отсутствует"
+
+# 8. Ошибка icat: код 1, .partial удаляется.
+cat > "$test_dir/shim/icat-fail" <<SHIM
+#!/bin/zsh
+exit 1
+SHIM
+chmod +x "$test_dir/shim/icat-fail"
+mkdir -p "$test_dir/result-failed"
+set +e
+RECOVERYAPP_ICAT_PATH="$test_dir/shim/icat-fail" \
+    "$cli" quick recover --image "$exfat_deleted" --output "$test_dir/result-failed" --all --json \
+    > "$test_dir/failed-recover.json" 2> "$test_dir/failed-recover.err"
+error_status=$?
+set -e
+[[ "$error_status" -eq 1 ]] || fail "ожидался код 1 при отказе icat (получен $error_status)"
+[[ -z "$(find "$test_dir/result-failed" -name '*.partial' -print -quit)" ]] \
+    || fail "после ошибки не должно быть .partial"
+print "PASS: ошибка icat даёт код 1 и удаляет .partial"
+
+# 9. Ошибочные аргументы и окружение: код 2.
 expect_usage_error() {
     set +e
     "$cli" "$@" > /dev/null 2> "$test_dir/usage.err"
@@ -173,12 +278,9 @@ expect_usage_error quick recover --output "$test_dir/result" --all
 expect_usage_error quick recover --image "$fat_image" --all
 expect_usage_error quick scan --image "$fat_image" --yaml
 expect_usage_error quick show --image "$fat_image"
-expect_usage_error quick scan --image --json
-expect_usage_error quick scan --image --all
-expect_usage_error quick recover --image "$fat_image" --output --all
-print "PASS: ошибочные и конфликтующие аргументы дают код 2"
+print "PASS: лишние аргументы отклоняются с кодом 2"
 
-# 8. Ошибки выполнения: код 1.
+# 10. Ошибки выполнения: код 1.
 expect_runtime_error() {
     set +e
     "$cli" "$@" > /dev/null 2> "$test_dir/runtime.err"

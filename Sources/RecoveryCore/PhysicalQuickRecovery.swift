@@ -137,6 +137,22 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
         candidates: [DeletedFileCandidate],
         onOutput: @escaping @MainActor @Sendable (String) -> Void = { _ in }
     ) async throws -> [URL] {
+        try await recoverDetailed(
+            drive: drive,
+            outputFolderURL: outputFolderURL,
+            candidates: candidates,
+            onOutput: onOutput
+        ).map(\.url)
+    }
+
+    /// Детальный восстановительный проход с физического накопителя: те же
+    /// размерные статусы, что и в образном режиме.
+    public func recoverDetailed(
+        drive: ExternalDrive,
+        outputFolderURL: URL,
+        candidates: [DeletedFileCandidate],
+        onOutput: @escaping @MainActor @Sendable (String) -> Void = { _ in }
+    ) async throws -> [RecoveredFileResult] {
         // Второй защитный барьер: те же проверки выхода непосредственно перед
         // восстановлением; CLI выполняет их же раньше — до Authorization
         // Services — через preflightRecoveryOutput.
@@ -250,8 +266,8 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
         outputFolderURL: URL,
         candidates: [DeletedFileCandidate],
         onOutput: @escaping @MainActor @Sendable (String) -> Void
-    ) throws -> [URL] {
-        var results: [URL] = []
+    ) throws -> [RecoveredFileResult] {
+        var results: [RecoveredFileResult] = []
         for (index, candidate) in candidates.enumerated() {
             try checkCancelled()
             let resultURL = ImageQuickRecovery.uniqueResultURL(
@@ -278,7 +294,21 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
                 try ImageQuickRecovery.classifyToolOutput(result.output, outputFolderURL: outputFolderURL)
                 try mapHelperFailure(result, toolName: "icat", allowToolFailure: false)
                 try FileManager.default.moveItem(at: partialURL, to: resultURL)
-                results.append(resultURL)
+                // Код 0 helper не гарантирует полноту файла: сверяем
+                // фактический размер с ожидаемым из метаданных.
+                let actualSize = (try? FileManager.default.attributesOfItem(
+                    atPath: resultURL.path
+                )[.size] as? Int64) ?? 0
+                let status = RecoveredFileSizeClassifier.status(
+                    expectedSize: candidate.expectedSize,
+                    actualSize: actualSize
+                )
+                results.append(RecoveredFileResult(
+                    url: resultURL,
+                    expectedSize: candidate.expectedSize,
+                    actualSize: actualSize,
+                    status: status
+                ))
             } catch {
                 try? FileManager.default.removeItem(at: partialURL)
                 throw error

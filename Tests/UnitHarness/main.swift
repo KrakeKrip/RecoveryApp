@@ -57,6 +57,51 @@ let physicalFiles = SleuthKitOutputParser.deletedFiles(
     filesystemType: "exfat"
 )
 check(physicalFiles[0].filesystemType == "exfat", "fls parser сохраняет тип файловой системы")
+check(physicalFiles[0].expectedSize == nil, "короткий fls не даёт ожидаемого размера")
+let spacedNameParsed = SleuthKitOutputParser.deletedFiles(
+    from: "r/r * 11:\tSPACE NAME.TXT",
+    partitionOffset: 0
+)
+check(spacedNameParsed.count == 1 && spacedNameParsed[0].path == "SPACE NAME.TXT",
+      "пробелы в имени не разделяют колонки")
+check(spacedNameParsed[0].expectedSize == nil, "короткий fls с пробелами в имени без размера")
+
+// Длинный формат `fls -l`: имя, четыре времени, размер, gid, uid.
+let longFlsOutput = """
+r/r * 4:\t_.TXT\t2026-09-22 23:32:08 (MSK)\t2026-09-22 00:00:00 (MSK)\t0000-00-00 00:00:00 (UTC)\t2026-09-22 23:32:08 (MSK)\t0\t0\t0
+r/r * 419:\tTESTCARD.PNG\t2026-09-12 15:13:52 (MSK)\t2026-09-12 00:00:00 (MSK)\t0000-00-00 00:00:00 (UTC)\t2026-09-12 15:13:52 (MSK)\t26672\t0\t0
+d/d * 8:\tDELETED_DIR\t2026-09-12 15:13:52 (MSK)\t2026-09-12 00:00:00 (MSK)\t0000-00-00 00:00:00 (UTC)\t2026-09-12 15:13:52 (MSK)\t4096\t0\t0
+"""
+let longParsed = SleuthKitOutputParser.deletedFiles(
+    from: longFlsOutput,
+    partitionOffset: 0,
+    filesystemType: "exfat"
+)
+check(longParsed.count == 2, "длинный fls отфильтровывает каталоги")
+check(longParsed[0].path == "_.TXT", "длинный fls сохраняет путь")
+check(longParsed[0].expectedSize == 0, "нулевой ожидаемый размер читается как 0")
+check(longParsed[1].expectedSize == 26672, "положительный ожидаемый размер извлекается")
+check(longParsed[1].inode == "419", "длинный fls сохраняет inode")
+let tabbedNameOutput = "r/r * 9:\tMY FILE\tWITH\tTAB\t2026-09-12 15:13:52 (MSK)\t2026-09-12 00:00:00 (MSK)\t0000-00-00 00:00:00 (UTC)\t2026-09-12 15:13:52 (MSK)\t512\t0\t0"
+let tabbedParsed = SleuthKitOutputParser.deletedFiles(from: tabbedNameOutput, partitionOffset: 0)
+check(tabbedParsed.count == 1, "имя с табуляциями не создаёт лишних записей")
+check(tabbedParsed[0].path == "MY FILE\tWITH\tTAB", "табуляции внутри имени сохраняются")
+check(tabbedParsed[0].expectedSize == 512, "размер находится при табуляциях в имени")
+check(tabbedParsed[0].displayName == "MY FILE\tWITH\tTAB", "displayName сохраняет имя с табуляциями целиком")
+
+// Классификатор размерных статусов: пять состояний из архитектуры.
+check(RecoveredFileSizeClassifier.status(expectedSize: 0, actualSize: 0) == .expectedEmpty,
+      "нулевой источник и результат — expectedEmpty")
+check(RecoveredFileSizeClassifier.status(expectedSize: 229, actualSize: 229) == .sizeMatches,
+      "равные размеры — sizeMatches")
+check(RecoveredFileSizeClassifier.status(expectedSize: 4246, actualSize: 4096) == .incomplete,
+      "короткий результат — incomplete")
+check(RecoveredFileSizeClassifier.status(expectedSize: 100, actualSize: 200) == .sizeMismatch,
+      "результат больше ожидаемого — sizeMismatch")
+check(RecoveredFileSizeClassifier.status(expectedSize: nil, actualSize: 4096) == .sizeUnknown,
+      "неизвестный ожидаемый размер — sizeUnknown")
+check(RecoveredFileSizeClassifier.status(expectedSize: 0, actualSize: 4096) == .sizeMismatch,
+      "нулевой источник с непустым результатом — sizeMismatch")
 
 let mmlsOutput = """
 004:  000       0000002048   0000249855   0000247808
@@ -418,4 +463,4 @@ expectUsageError([
     "quick", "recover", "--drive", "disk4", "--expected-name", "N", "--expected-size", "5", "--output", "d"
 ], "recover --drive без --all отклоняется")
 
-print("PASS: 96 domain checks")
+print("PASS: 113 domain checks")

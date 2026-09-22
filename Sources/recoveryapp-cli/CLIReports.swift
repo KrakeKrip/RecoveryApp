@@ -67,6 +67,7 @@ struct QuickCandidateReport: Encodable {
     let displayName: String
     let partitionOffset: Int64
     let filesystemType: String
+    let expectedSize: Int64?
 
     init(_ candidate: DeletedFileCandidate) {
         inode = candidate.inode
@@ -74,6 +75,49 @@ struct QuickCandidateReport: Encodable {
         displayName = candidate.displayName
         partitionOffset = candidate.partitionOffset
         filesystemType = candidate.filesystemType
+        expectedSize = candidate.expectedSize
+    }
+}
+
+struct RecoveredFileItemReport: Encodable {
+    let path: String
+    let expectedSize: Int64?
+    let actualSize: Int64
+    let status: String
+
+    init(_ result: RecoveredFileResult) {
+        path = result.url.path
+        expectedSize = result.expectedSize
+        actualSize = result.actualSize
+        status = result.status.rawValue
+    }
+}
+
+/// Агрегированные счётчики по опубликованным файлам; сумма равна
+/// recoveredCount.
+struct StatusCountsReport: Encodable {
+    let expectedEmpty: Int
+    let sizeMatches: Int
+    let incomplete: Int
+    let sizeMismatch: Int
+    let sizeUnknown: Int
+
+    init(results: [RecoveredFileResult]) {
+        var counts = [
+            RecoveredFileSizeStatus.expectedEmpty: 0,
+            .sizeMatches: 0,
+            .incomplete: 0,
+            .sizeMismatch: 0,
+            .sizeUnknown: 0
+        ]
+        for result in results {
+            counts[result.status, default: 0] += 1
+        }
+        expectedEmpty = counts[.expectedEmpty] ?? 0
+        sizeMatches = counts[.sizeMatches] ?? 0
+        incomplete = counts[.incomplete] ?? 0
+        sizeMismatch = counts[.sizeMismatch] ?? 0
+        sizeUnknown = counts[.sizeUnknown] ?? 0
     }
 }
 
@@ -82,6 +126,17 @@ struct QuickRecoverReport: Encodable {
     let outputDirectory: String
     let recoveredCount: Int
     let files: [String]
+    let items: [RecoveredFileItemReport]
+    let statusCounts: StatusCountsReport
+
+    init(outputDirectory: String, results: [RecoveredFileResult]) {
+        schemaVersion = 1
+        self.outputDirectory = outputDirectory
+        recoveredCount = results.count
+        files = results.map(\.url.path)
+        items = results.map { RecoveredFileItemReport($0) }
+        statusCounts = StatusCountsReport(results: results)
+    }
 }
 
 extension ExternalDrive {
