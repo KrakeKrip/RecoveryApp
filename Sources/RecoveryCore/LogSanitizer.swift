@@ -1,7 +1,11 @@
 import Foundation
 
-enum LogSanitizer {
-    static func clean(_ raw: String) -> String {
+/// Очистка журналов внешних инструментов для показа пользователю: терминальные
+/// управляющие последовательности удаляются, строки приводятся к читаемому
+/// виду. Живёт в RecoveryCore, потому что PhotoRec-бэкенд Core сам готовит
+/// сводку PhotoRec для обратного вызова onOutput — общую для GUI и CLI.
+public enum LogSanitizer {
+    public static func clean(_ raw: String) -> String {
         let scalars = Array(raw.unicodeScalars)
         var result = String.UnicodeScalarView()
         var index = 0
@@ -52,7 +56,7 @@ enum LogSanitizer {
         return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    static func photoRecSummary(_ raw: String) -> String {
+    public static func photoRecSummary(_ raw: String) -> String {
         let cleaned = clean(raw)
         var result: [String] = []
         var includedVersion = false

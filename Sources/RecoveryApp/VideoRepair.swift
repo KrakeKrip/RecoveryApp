@@ -1,5 +1,6 @@
 @preconcurrency import Foundation
 import Darwin
+import RecoveryCore
 
 struct VideoRepairRequest: Sendable {
     let referenceURL: URL

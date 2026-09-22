@@ -148,6 +148,142 @@ extension ExternalDrive {
     }
 }
 
+// MARK: - JSONL-события `deep recover --jsonl`
+//
+// Контракт stdout в режиме --jsonl: не более одного валидного JSON-объекта на
+// строку; сообщения и техническая диагностика идут в stderr. Значения, которые
+// пока нельзя достоверно определить, ключом не кодируются (никаких нулевых
+// подмен). ETA не выдаётся никогда.
+
+/// Источник запуска deep recover. Для образа — абсолютный путь файла, для
+/// накопителя — повторно сверенные идентификатор, имя, размер и raw-путь.
+enum DeepSourceReport: Encodable {
+    case image(path: String)
+    case drive(id: String, name: String, size: Int64, rawDevicePath: String)
+
+    private enum CodingKeys: String, CodingKey {
+        case type, path, id, name, size, rawDevicePath
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .image(let path):
+            try container.encode("image", forKey: .type)
+            try container.encode(path, forKey: .path)
+        case .drive(let id, let name, let size, let rawDevicePath):
+            try container.encode("drive", forKey: .type)
+            try container.encode(id, forKey: .id)
+            try container.encode(name, forKey: .name)
+            try container.encode(size, forKey: .size)
+            try container.encode(rawDevicePath, forKey: .rawDevicePath)
+        }
+    }
+}
+
+struct DeepStartedEvent: Encodable {
+    let event = "started"
+    let schemaVersion = 1
+    let source: DeepSourceReport
+    let sessionDirectory: String
+}
+
+/// progress: прошедшее время, найденные файлы и доступные фактические
+/// счётчики чтения/объёма результата. processedBytes/totalBytes присутствуют
+/// только когда есть источник метрик (файл прогресса helper, photorec.ses);
+/// readBytesPerSecond — только при реальных измерениях на двух снимках.
+struct DeepProgressEvent: Encodable {
+    let event = "progress"
+    let schemaVersion = 1
+    let elapsedSeconds: Double
+    let foundFiles: Int
+    let resultBytes: Int64
+    let processedBytes: Int64?
+    let totalBytes: Int64?
+    let readBytesPerSecond: Double?
+
+    private enum CodingKeys: String, CodingKey {
+        case event, schemaVersion, elapsedSeconds, foundFiles, resultBytes
+        case processedBytes, totalBytes, readBytesPerSecond
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(event, forKey: .event)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(elapsedSeconds, forKey: .elapsedSeconds)
+        try container.encode(foundFiles, forKey: .foundFiles)
+        try container.encode(resultBytes, forKey: .resultBytes)
+        try container.encodeIfPresent(processedBytes, forKey: .processedBytes)
+        try container.encodeIfPresent(totalBytes, forKey: .totalBytes)
+        try container.encodeIfPresent(readBytesPerSecond, forKey: .readBytesPerSecond)
+    }
+}
+
+struct DeepCompletedEvent: Encodable {
+    let event = "completed"
+    let schemaVersion = 1
+    let sessionDirectory: String
+    let recoveredCount: Int
+    let files: [String]
+}
+
+/// Итог после Ctrl-C: папка сессии сохраняется, files — уже найденные файлы.
+/// sessionDirectory отсутствует, только если отмена случилась до создания
+/// папки сессии.
+struct DeepCancelledEvent: Encodable {
+    let event = "cancelled"
+    let schemaVersion = 1
+    let sessionDirectory: String?
+    let foundFiles: Int
+    let files: [String]
+
+    private enum CodingKeys: String, CodingKey {
+        case event, schemaVersion, sessionDirectory, foundFiles, files
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(event, forKey: .event)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encodeIfPresent(sessionDirectory, forKey: .sessionDirectory)
+        try container.encode(foundFiles, forKey: .foundFiles)
+        try container.encode(files, forKey: .files)
+    }
+}
+
+struct DeepErrorEvent: Encodable {
+    let event = "error"
+    let schemaVersion = 1
+    let code: String
+    let message: String
+}
+
+/// Стабильные коды ошибки для события error; строка сообщения понятна
+/// пользователю и может уточняться без смены кода.
+func deepErrorCode(for error: Error) -> String {
+    guard let deletedError = error as? DeletedFilesError else { return "internal" }
+    return switch deletedError {
+    case .imageMissing: "imageMissing"
+    case .imageNotRegularFile: "imageNotRegularFile"
+    case .invalidDriveSource: "invalidDriveSource"
+    case .outputFolderMissing: "outputFolderMissing"
+    case .outputFolderNotWritable: "outputFolderNotWritable"
+    case .outputOnSource: "outputOnSource"
+    case .sourceUnavailable: "sourceUnavailable"
+    case .sourceChanged: "sourceChanged"
+    case .authorizationDenied: "authorizationDenied"
+    case .toolMissing: "toolMissing"
+    case .unsupportedImage: "unsupportedImage"
+    case .launchFailed: "launchFailed"
+    case .toolFailed: "toolFailed"
+    case .outputSpaceExhausted: "outputSpaceExhausted"
+    case .sourceReadFailed: "sourceReadFailed"
+    case .cancelled: "cancelled"
+    case .nothingSelected: "nothingSelected"
+    }
+}
+
 enum CommandLineHelp {
     static let usage = """
         RecoveryApp CLI — безопасная диагностика и восстановление через RecoveryCore.
@@ -164,6 +300,10 @@ enum CommandLineHelp {
               Найти удалённые записи на внешнем накопителе только для чтения
           recoveryapp-cli quick recover --drive diskN --expected-name ИМЯ --expected-size БАЙТЫ --output ПАПКА --all [--json]
               Найти и восстановить все записи с накопителя в папку
+          recoveryapp-cli deep recover --image ФАЙЛ --output ПАПКА [--jsonl]
+              Глубокий сигнатурный поиск PhotoRec по всему образу: JPEG, PNG, MOV/MP4
+          recoveryapp-cli deep recover --drive diskN --expected-name ИМЯ --expected-size БАЙТЫ --output ПАПКА [--jsonl]
+              Глубокий сигнатурный поиск по внешнему накопителю только для чтения
 
         --image и --drive взаимоисключающие. Для --drive система заново
         обнаруживает накопитель и сверяет точные имя и размер до запроса
@@ -171,12 +311,27 @@ enum CommandLineHelp {
         macOS может показать запрос пароля для read-only доступа.
         Пароль CLI не принимает ни в каком виде.
 
-        --json — машинночитаемый результат одной JSON-строкой в stdout.
-        Пути встроенных инструментов mmls, fls и icat берутся из переменных
-        окружения RECOVERYAPP_MMLS_PATH, RECOVERYAPP_FLS_PATH, RECOVERYAPP_ICAT_PATH.
+        Глубокий режим сразу запускает PhotoRec без предварительного скана и
+        создаёт уникальную папку сессии внутри --output: результаты, журнал и
+        photorec.ses находятся только в ней. Исходные имена и папки не
+        восстанавливаются. Точный ETA не показывается — достоверного источника
+        для него нет. Остановка (Ctrl-C) завершает всю группу PhotoRec/helper,
+        уже найденные файлы остаются в папке сессии.
 
-        Коды выхода: 0 — успех; 1 — ошибка выполнения; 2 — неверные аргументы.
-        Диагностика и подсказки выводятся в stderr.
+        --json — машинночитаемый результат одной JSON-строкой (quick, drives,
+        version). --jsonl — построчные JSON-события deep recover в stdout:
+        started (источник и папка сессии), progress (прошедшее время, найдено
+        файлов, доступные счётчики чтения), completed (папка сессии, число и
+        пути файлов), cancelled (папка сессии и уже найденные файлы), error
+        (стабильный код и понятное сообщение). Диагностика всегда идёт в stderr.
+
+        Пути встроенных инструментов берутся из переменных окружения
+        RECOVERYAPP_MMLS_PATH, RECOVERYAPP_FLS_PATH, RECOVERYAPP_ICAT_PATH,
+        RECOVERYAPP_PHOTOREC_PATH, RECOVERYAPP_READONLY_HELPER_PATH.
+
+        Коды выхода: 0 — успех (включая пустой результат); 1 — ошибка
+        выполнения; 2 — неверные аргументы; 130 — операция остановлена
+        (Ctrl-C), найденные файлы сохранены.
         """
 
     static func description(for error: CLIUsageError) -> String {
@@ -184,7 +339,7 @@ enum CommandLineHelp {
         case .unknownCommand(let name):
             "Неизвестная команда «\(name)»."
         case .unknownOption(let option):
-            "Неизвестный параметр «\(option)». Поддерживаются --json, --image, --output, --all."
+            "Неизвестный параметр «\(option)». Поддерживаются --json, --jsonl, --image, --output, --all."
         case .missingDrivesCommand:
             "После «drives» укажите подкоманду «list»."
         case .unknownDrivesCommand(let name):
@@ -195,6 +350,10 @@ enum CommandLineHelp {
             "После «quick» укажите подкоманду: quick scan или quick recover."
         case .unknownQuickCommand(let name):
             "Неизвестная подкоманда «\(name)» для quick. Доступно: quick scan, quick recover."
+        case .missingDeepCommand:
+            "После «deep» укажите подкоманду «recover»."
+        case .unknownDeepCommand(let name):
+            "Неизвестная подкоманда «\(name)» для deep. Доступно: deep recover."
         case .missingOptionValue(let option):
             "После «\(option)» укажите значение."
         case .missingRequiredOption(let option):

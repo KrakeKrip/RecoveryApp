@@ -53,21 +53,9 @@ final class DeletedFilesViewModel: ObservableObject {
     private var lastMeasurementDate: Date?
     private var lastSpeedUpdateDate: Date?
 
-    private struct ProgressSnapshot: Equatable, Sendable {
-        let fileCount: Int
-        let resultBytes: Int64
-        let logSize: Int64
-        let processedBytes: Int64?
-        let totalBytes: Int64?
-
-        static let empty = ProgressSnapshot(
-            fileCount: 0,
-            resultBytes: 0,
-            logSize: 0,
-            processedBytes: nil,
-            totalBytes: nil
-        )
-    }
+    // Снимок прогресса и его расчёт живут в RecoveryCore
+    // (`PhotoRecDeepRecovery.progressSnapshot`) и общие с CLI.
+    private typealias ProgressSnapshot = PhotoRecProgressSnapshot
 
     init(
         initialDriveID: ExternalDrive.ID? = nil,
@@ -406,7 +394,7 @@ final class DeletedFilesViewModel: ObservableObject {
             while !Task.isCancelled {
                 guard let self, self.state == .deepRecovering else { return }
                 let snapshot = await Task.detached(priority: .utility) {
-                    Self.progressSnapshot(at: sessionURL)
+                    PhotoRecDeepRecovery.progressSnapshot(at: sessionURL)
                 }.value
                 self.updateProgress(snapshot)
                 try? await Task.sleep(for: .seconds(2))
@@ -473,98 +461,8 @@ final class DeletedFilesViewModel: ObservableObject {
         }
     }
 
-    nonisolated private static func progressSnapshot(at sessionURL: URL) -> ProgressSnapshot {
-        let fileManager = FileManager.default
-        let logURL = sessionURL.appendingPathComponent("photorec.log")
-        let progressURL = sessionURL.appendingPathComponent(".recoveryapp-progress")
-        let logSize = ((try? fileManager.attributesOfItem(atPath: logURL.path)[.size]) as? NSNumber)?.int64Value ?? 0
-        let extensions = Set(["jpg", "jpeg", "png", "mov", "mp4"])
-        var fileCount = 0
-        var resultBytes: Int64 = 0
-        let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey]
-        if let enumerator = fileManager.enumerator(
-            at: sessionURL,
-            includingPropertiesForKeys: keys,
-            options: [.skipsHiddenFiles]
-        ) {
-            for case let url as URL in enumerator where extensions.contains(url.pathExtension.lowercased()) {
-                guard let values = try? url.resourceValues(forKeys: Set(keys)), values.isRegularFile == true else {
-                    continue
-                }
-                fileCount += 1
-                resultBytes += Int64(values.fileSize ?? 0)
-            }
-        }
-        let progressValues = progressFileValues(at: progressURL)
-        let sessionProcessed = progressValues.flatMap { values in
-            photoRecSessionProcessedBytes(
-                at: sessionURL.appendingPathComponent("photorec.ses"),
-                totalBytes: values.total
-            )
-        }
-        let processedBytes = [progressValues?.processed, sessionProcessed]
-            .compactMap { $0 }
-            .max()
-        return ProgressSnapshot(
-            fileCount: fileCount,
-            resultBytes: resultBytes,
-            logSize: logSize,
-            processedBytes: processedBytes,
-            totalBytes: progressValues?.total
-        )
-    }
-
-    nonisolated private static func photoRecSessionProcessedBytes(at url: URL, totalBytes: Int64) -> Int64? {
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-        let lines = text.split(whereSeparator: \.isNewline)
-        guard let headerIndex = lines.firstIndex(where: { $0.contains("blocksize,") }) else { return nil }
-        let header = lines[headerIndex]
-        let headerFields = header.split(separator: ",")
-        guard let blocksizeIndex = headerFields.firstIndex(of: "blocksize"),
-              headerFields.indices.contains(blocksizeIndex + 1),
-              let blockSize = Int64(headerFields[blocksizeIndex + 1]),
-              blockSize > 0 else { return nil }
-
-        var lastRemainingStart: Int64?
-        var largestEnd: Int64 = -1
-        for line in lines.dropFirst(headerIndex + 1) {
-            let bounds = line.split(separator: "-", maxSplits: 1)
-            guard bounds.count == 2,
-                  let start = Int64(bounds[0]),
-                  let end = Int64(bounds[1]),
-                  start >= 0,
-                  end >= start else { continue }
-            if end > largestEnd {
-                largestEnd = end
-                lastRemainingStart = start
-            }
-        }
-        guard let start = lastRemainingStart else { return nil }
-        let processed = start.multipliedReportingOverflow(by: blockSize)
-        guard !processed.overflow else { return nil }
-        return min(totalBytes, processed.partialValue)
-    }
-
     nonisolated private static func minimumMeaningfulProgress(total: Int64) -> Int64 {
         min(1_048_576, max(1, total / 100))
-    }
-
-    nonisolated private static func progressFileValues(at url: URL) -> (processed: Int64, total: Int64)? {
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-        var values: [String: Int64] = [:]
-        for line in text.split(whereSeparator: \.isNewline) {
-            let pieces = line.split(separator: "=", maxSplits: 1).map(String.init)
-            if pieces.count == 2, let number = Int64(pieces[1]) {
-                values[pieces[0]] = number
-            }
-        }
-        guard values["version"] == 1,
-              let processed = values["processed"],
-              let total = values["total"],
-              processed >= 0,
-              total > 0,
-              processed <= total else { return nil }
-        return (processed, total)
     }
 
     nonisolated private static func formattedBytes(_ bytes: Int64) -> String {

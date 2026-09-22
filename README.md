@@ -28,9 +28,32 @@ MOV/MP4 без имён. Результат всегда направляетс�
 ./Scripts/test-photorec-jpeg.sh
 ./Scripts/test-readonly-helper.sh
 ./Scripts/test-metadata-helper.sh
+./Scripts/test-deep-photorec-cli.sh
 ./Scripts/build-app.sh
 open ./dist/RecoveryApp.app
 ```
+
+## CLI глубокого восстановления
+
+CLI `recoveryapp-cli` использует тот же `RecoveryCore`, что и GUI. Команды
+глубокого сигнатурного поиска PhotoRec (JPEG, PNG, MOV/MP4) запускают
+восстановление сразу, без предварительного скана, и создают уникальную папку
+сессии внутри `--output`:
+
+```bash
+recoveryapp-cli deep recover --image ФАЙЛ --output ПАПКА [--jsonl]
+recoveryapp-cli deep recover --drive diskN --expected-name ИМЯ --expected-size БАЙТЫ --output ПАПКА [--jsonl]
+```
+
+- Для `--drive` накопитель заново обнаруживается, имя и размер сверяются, а
+  папка результата проверяется до системного запроса пароля; чтение только
+  через read-only helper; пароль CLI не принимает.
+- Текстовый режим на русском; `--jsonl` выдаёт по одному JSON-событию на
+  строку в stdout: `started`, `progress`, `completed`, `cancelled`, `error`;
+  диагностика идёт в stderr. Точного ETA нет.
+- Коды выхода: 0 — успех (включая пустой результат), 1 — ошибка выполнения,
+  2 — неверные аргументы, 130 — остановка по Ctrl-C; найденные файлы и папка
+  сессии сохраняются.
 
 Если установлена предварительная версия Command Line Tools и её компилятор не
 совпадает с SDK по умолчанию, можно явно выбрать совместимый SDK:

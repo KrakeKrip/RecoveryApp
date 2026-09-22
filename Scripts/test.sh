@@ -34,7 +34,6 @@ swiftc \
     -lRecoveryCore \
     Sources/RecoveryApp/AppModel.swift \
     Sources/RecoveryApp/VideoRepair.swift \
-    Sources/RecoveryApp/LogSanitizer.swift \
     Sources/RecoveryApp/DeletedFilesRecovery.swift \
     Sources/RecoveryApp/UserFacingFailure.swift \
     Sources/recoveryapp-cli/CLIReports.swift \

@@ -1,7 +1,11 @@
 import Foundation
 import RecoveryCore
 
+// Счётчик позволяет печатать фактическое число проверок вместо ручной константы.
+nonisolated(unsafe) private var checkCount = 0
+
 private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
+    checkCount += 1
     guard condition() else {
         FileHandle.standardError.write(Data("FAIL: \(message)\n".utf8))
         exit(1)
@@ -152,7 +156,7 @@ _ = FileManager.default.createFile(
     atPath: photoRecSecond.appendingPathComponent("f000001.jpg").path,
     contents: Data("jpeg".utf8)
 )
-let latestPhotoRecDirectory = try DeletedFilesExecutor.photoRecOutputDirectory(
+let latestPhotoRecDirectory = try PhotoRecDeepRecovery.photoRecOutputDirectory(
     baseURL: photoRecBase
 )
 check(
@@ -160,7 +164,7 @@ check(
     "выбирается последний каталог результата PhotoRec"
 )
 check(
-    DeletedFilesExecutor.regularFilesRecursively(in: photoRecSecond).count == 1,
+    PhotoRecDeepRecovery.regularFilesRecursively(in: photoRecSecond).count == 1,
     "подсчитываются восстановленные PhotoRec файлы"
 )
 
@@ -469,4 +473,215 @@ expectUsageError([
     "quick", "recover", "--drive", "disk4", "--expected-name", "N", "--expected-size", "5", "--output", "d"
 ], "recover --drive без --all отклоняется")
 
-print("PASS: 115 domain checks")
+// Deep-команды CLI: парсинг и отклонение неверных аргументов.
+do {
+    let deepImage = try CommandLineParser.parse(["deep", "recover", "--image", "i.img", "--output", "res"])
+    let deepImageJSONL = try CommandLineParser.parse([
+        "deep", "recover", "--image", "i.img", "--output", "res", "--jsonl"
+    ])
+    let deepDrive = try CommandLineParser.parse([
+        "deep", "recover", "--drive", "disk4", "--expected-name", "Flashka",
+        "--expected-size", "125829120000", "--output", "res", "--jsonl"
+    ])
+    check(
+        deepImage == .deepRecover(source: .image("i.img"), output: "res", jsonl: false),
+        "deep recover --image разбирается"
+    )
+    check(
+        deepImageJSONL == .deepRecover(source: .image("i.img"), output: "res", jsonl: true),
+        "deep recover --jsonl разбирается"
+    )
+    check(
+        deepDrive == .deepRecover(
+            source: .drive(identifier: "disk4", expectedName: "Flashka", expectedSize: 125829120000),
+            output: "res",
+            jsonl: true
+        ),
+        "deep recover --drive --jsonl разбирается"
+    )
+} catch {
+    check(false, "валидные deep-аргументы CLI не должны отклоняться")
+}
+expectUsageError(["deep"], "deep без подкоманды отклоняется")
+expectUsageError(["deep", "scan", "--image", "a.img"], "deep scan не существует — только recover")
+expectUsageError(["deep", "recover"], "deep recover без источника отклоняется")
+expectUsageError(["deep", "recover", "--image", "a.img"], "deep recover без --output отклоняется")
+expectUsageError(["deep", "recover", "--image", "a.img", "--output", "d", "--json"], "--json в deep отклоняется")
+expectUsageError(["deep", "recover", "--image", "a.img", "--output", "d", "--all"], "--all в deep отклоняется")
+expectUsageError(["quick", "scan", "--image", "a.img", "--jsonl"], "--jsonl в quick отклоняется")
+expectUsageError(["version", "--jsonl"], "--jsonl в version отклоняется")
+expectUsageError([
+    "deep", "recover", "--image", "a.img", "--drive", "disk4", "--output", "d"
+], "конфликт --image и --drive в deep отклоняется")
+expectUsageError([
+    "deep", "recover", "--drive", "/dev/rdisk4", "--expected-name", "N", "--expected-size", "5", "--output", "d"
+], "raw-путь в deep --drive отклоняется")
+expectUsageError([
+    "deep", "recover", "--drive", "disk4", "--expected-size", "5", "--output", "d"
+], "deep --drive без expected-name отклоняется")
+expectUsageError([
+    "deep", "recover", "--image", "a.img", "--expected-name", "N", "--output", "d"
+], "expected-name с --image в deep отклоняется")
+
+// Снимки прогресса PhotoRec: только измеренные значения, nil вместо подмен.
+let progressSession = root.appendingPathComponent("progress-session", isDirectory: true)
+let progressRecup = progressSession.appendingPathComponent("Recovered.1", isDirectory: true)
+try FileManager.default.createDirectory(at: progressRecup, withIntermediateDirectories: true)
+_ = FileManager.default.createFile(
+    atPath: progressRecup.appendingPathComponent("f000001.jpg").path,
+    contents: Data(count: 100)
+)
+_ = FileManager.default.createFile(
+    atPath: progressRecup.appendingPathComponent("f000002.png").path,
+    contents: Data(count: 250)
+)
+_ = FileManager.default.createFile(
+    atPath: progressRecup.appendingPathComponent("f000003.txt").path,
+    contents: Data(count: 4096)
+)
+_ = FileManager.default.createFile(
+    atPath: progressSession.appendingPathComponent("photorec.log").path,
+    contents: Data(count: 64)
+)
+let sesText = """
+blocksize,512
+0-1000
+2000-3000
+"""
+_ = FileManager.default.createFile(
+    atPath: progressSession.appendingPathComponent("photorec.ses").path,
+    contents: Data(sesText.utf8)
+)
+let progressFileText = """
+version=1
+processed=512000
+total=1024000
+"""
+_ = FileManager.default.createFile(
+    atPath: progressSession.appendingPathComponent(".recoveryapp-progress").path,
+    contents: Data(progressFileText.utf8)
+)
+let snapshot = PhotoRecDeepRecovery.progressSnapshot(at: progressSession)
+check(snapshot.fileCount == 2, "снимок считает только файлы сигнатур jpg/png/mov/mp4")
+check(snapshot.resultBytes == 350, "снимок суммирует объём результата")
+check(snapshot.logSize == 64, "снимок читает размер журнала PhotoRec")
+check(snapshot.processedBytes == 1024000,
+      "снимок берёт максимум из файла прогресса и photorec.ses (2000 * 512)")
+check(snapshot.totalBytes == 1024000, "снимок читает общий объём из файла прогресса")
+check(PhotoRecDeepRecovery.photoRecSessionProcessedBytes(
+    at: progressSession.appendingPathComponent("photorec.ses"),
+    totalBytes: 1024000
+) == 1024000, "photorec.ses: начало последнего диапазона умножается на blocksize")
+check(PhotoRecDeepRecovery.photoRecSessionProcessedBytes(
+    at: root.appendingPathComponent("absent.ses"),
+    totalBytes: 1024000
+) == nil, "отсутствующий photorec.ses даёт nil, а не ноль")
+let sesNoBlocksize = progressSession.appendingPathComponent("ses-no-blocksize")
+_ = FileManager.default.createFile(atPath: sesNoBlocksize.path, contents: Data("0-1000\n".utf8))
+check(PhotoRecDeepRecovery.photoRecSessionProcessedBytes(at: sesNoBlocksize, totalBytes: 1024) == nil,
+      "photorec.ses без blocksize не даёт обработанный объём")
+let badProgress = root.appendingPathComponent("bad-progress")
+_ = FileManager.default.createFile(
+    atPath: badProgress.path,
+    contents: Data("version=2\nprocessed=5\ntotal=10\n".utf8)
+)
+check(PhotoRecDeepRecovery.progressFileValues(at: badProgress) == nil,
+      "файл прогресса с неверной версией игнорируется")
+let overProgress = root.appendingPathComponent("over-progress")
+_ = FileManager.default.createFile(
+    atPath: overProgress.path,
+    contents: Data("version=1\nprocessed=20\ntotal=10\n".utf8)
+)
+check(PhotoRecDeepRecovery.progressFileValues(at: overProgress) == nil,
+      "файл прогресса с processed больше total игнорируется")
+let emptySession = root.appendingPathComponent("empty-deep-session", isDirectory: true)
+try FileManager.default.createDirectory(at: emptySession, withIntermediateDirectories: false)
+let emptySnapshot = PhotoRecDeepRecovery.progressSnapshot(at: emptySession)
+check(emptySnapshot == .empty, "сессия без находок даёт пустой снимок с nil-счётчиками чтения")
+
+// JSONL-события deep recover: ключи опускаются, когда значения недоступны.
+func encodeJSON<T: Encodable>(_ value: T) -> String {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    return String(decoding: try! encoder.encode(value), as: UTF8.self)
+}
+func parseJSONObject(_ string: String) -> [String: Any] {
+    try! JSONSerialization.jsonObject(with: Data(string.utf8)) as! [String: Any]
+}
+func parseJSONArray(_ string: String) -> [[String: Any]] {
+    try! JSONSerialization.jsonObject(with: Data(string.utf8)) as! [[String: Any]]
+}
+let startedParsed = parseJSONObject(encodeJSON(DeepStartedEvent(
+    source: .image(path: "/abs/image.img"),
+    sessionDirectory: "/abs/out/PhotoRec-Recovery"
+)))
+check(startedParsed["event"] as? String == "started", "started содержит событие")
+check(startedParsed["schemaVersion"] as? Int == 1, "started содержит версию схемы")
+check(startedParsed["sessionDirectory"] as? String == "/abs/out/PhotoRec-Recovery",
+      "started содержит папку сессии")
+let startedSource = startedParsed["source"] as? [String: Any]
+check(startedSource?["type"] as? String == "image" && startedSource?["path"] as? String == "/abs/image.img",
+      "started для образа содержит абсолютный путь и тип")
+let startedDriveParsed = parseJSONObject(encodeJSON(DeepStartedEvent(
+    source: .drive(id: "disk4", name: "Flashka", size: 125_829_120_000, rawDevicePath: "/dev/rdisk4"),
+    sessionDirectory: "/abs/out/RecoveryApp-восстановление"
+)))
+let startedDriveSource = startedDriveParsed["source"] as? [String: Any]
+check(startedDriveSource?["type"] as? String == "drive"
+      && startedDriveSource?["id"] as? String == "disk4"
+      && startedDriveSource?["rawDevicePath"] as? String == "/dev/rdisk4"
+      && startedDriveSource?["size"] as? Int == 125_829_120_000,
+      "started для накопителя содержит сверенные id, размер и raw-путь")
+let progressParsed = parseJSONObject(encodeJSON(DeepProgressEvent(
+    elapsedSeconds: 2.5,
+    foundFiles: 3,
+    resultBytes: 350,
+    processedBytes: nil,
+    totalBytes: nil,
+    readBytesPerSecond: nil
+)))
+check(progressParsed["event"] as? String == "progress" && progressParsed["elapsedSeconds"] as? Double == 2.5,
+      "progress содержит прошедшее время")
+check(progressParsed["foundFiles"] as? Int == 3 && progressParsed["resultBytes"] as? Int == 350,
+      "progress содержит найденные файлы и объём результата")
+check(progressParsed["processedBytes"] == nil && progressParsed["totalBytes"] == nil
+      && progressParsed["readBytesPerSecond"] == nil,
+      "недоступные счётчики опускаются из progress, а не кодируются нулём")
+let progressMeasuredParsed = parseJSONObject(encodeJSON(DeepProgressEvent(
+    elapsedSeconds: 4,
+    foundFiles: 3,
+    resultBytes: 350,
+    processedBytes: 1024000,
+    totalBytes: 1024000,
+    readBytesPerSecond: 512000
+)))
+check(progressMeasuredParsed["processedBytes"] as? Int == 1024000
+      && progressMeasuredParsed["readBytesPerSecond"] as? Int == 512000,
+      "измеренные счётчики присутствуют в progress")
+let completedParsed = parseJSONObject(encodeJSON(DeepCompletedEvent(
+    sessionDirectory: "/abs/session",
+    recoveredCount: 2,
+    files: ["/abs/session/Recovered.1/a.jpg", "/abs/session/Recovered.1/b.png"]
+)))
+check(completedParsed["event"] as? String == "completed" && completedParsed["recoveredCount"] as? Int == 2,
+      "completed содержит папку сессии и число файлов")
+check((completedParsed["files"] as? [String])?.count == 2, "completed содержит пути файлов")
+let cancelledParsed = parseJSONObject(encodeJSON(DeepCancelledEvent(
+    sessionDirectory: "/abs/session",
+    foundFiles: 1,
+    files: ["/abs/session/Recovered.1/a.jpg"]
+)))
+check(cancelledParsed["event"] as? String == "cancelled" && cancelledParsed["foundFiles"] as? Int == 1,
+      "cancelled содержит папку сессии и уже найденные файлы")
+let cancelledEarlyParsed = parseJSONObject(encodeJSON(DeepCancelledEvent(
+    sessionDirectory: nil,
+    foundFiles: 0,
+    files: []
+)))
+check(cancelledEarlyParsed["sessionDirectory"] == nil,
+      "cancelled до создания сессии опускает sessionDirectory")
+check(parseJSONObject(encodeJSON(DeepErrorEvent(code: "imageMissing", message: "текст")))["code"]
+      as? String == "imageMissing",
+      "error содержит стабильный код")
+
+print("PASS: \(checkCount) domain checks")
