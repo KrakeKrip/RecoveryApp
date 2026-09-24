@@ -37,7 +37,9 @@ fail() {
 #    успешный путь. Образ живёт внутри test_dir.
 image_file="$test_dir/volume.asif"
 image_mount="$test_dir/image-mnt"
+ram_sectors=98304   # 48 MiB
 ram_device=""
+ram_verified=no
 ram_mount=""
 
 create_image_volume() {
@@ -56,15 +58,82 @@ create_image_volume() {
     fi
 }
 
+# RAM-диск: до форматирования доказывается, что устройство принадлежит
+# ram://-образу с запрошенным размером и появилось только в этом запуске
+# (снимок hdiutil info до/после подключения); точка монтирования берётся из
+# diskutil по фактическому контейнеру, а не из предположения /Volumes/VIDCLI.
 create_ram_volume() {
-    ram_device="$(hdiutil attach -nomount ram://98304 2>/dev/null | awk 'NR==1{print $1}')"
-    [[ "$ram_device" == /dev/disk* ]] || fail "не удалось создать RAM-диск"
-    diskutil eraseVolume APFS VIDCLI "$ram_device" >/dev/null
-    ram_mount="$(ls -d /Volumes/VIDCLI 2>/dev/null || true)"
-    [[ -d "$ram_mount" ]] || fail "RAM-том не смонтировался"
+    local before_plist="$test_dir/ram-before.plist"
+    local after_plist="$test_dir/ram-after.plist"
+    hdiutil info -plist > "$before_plist" 2>/dev/null \
+        || fail "не удалось прочитать hdiutil info до подключения RAM-диска"
+    ram_device="$(hdiutil attach -nomount "ram://$ram_sectors" 2>/dev/null | awk 'NR==1{print $1}')"
+    [[ "$ram_device" == /dev/disk* ]] \
+        || fail "hdiutil attach не вернул устройство RAM-диска (получено: «$ram_device»)"
+    hdiutil info -plist > "$after_plist" 2>/dev/null \
+        || fail "не удалось прочитать hdiutil info после подключения RAM-диска"
+    python3 - "$ram_device" "$ram_sectors" "$before_plist" "$after_plist" <<'PY' \
+        || fail "не удалось доказать, что $ram_device — RAM-диск этого запуска (проверьте hdiutil info вручную)"
+import plistlib
+import sys
+
+device, sectors, before_path, after_path = sys.argv[1:5]
+expected = f"ram://{sectors}"
+
+def image_devices(path):
+    with open(path, "rb") as handle:
+        plist = plistlib.load(handle)
+    mapping = {}
+    for image in plist.get("images", []):
+        image_path = image.get("image-path", "")
+        for entity in image.get("system-entities", []):
+            entry = entity.get("dev-entry", "")
+            if entry:
+                mapping[entry] = image_path
+    return mapping
+
+before = image_devices(before_path)
+after = image_devices(after_path)
+assert device in after, f"{device} отсутствует в hdiutil info после подключения"
+assert after[device] == expected, f"{device} принадлежит {after[device]!r}, ожидался {expected}"
+assert device not in before, f"{device} существовал до подключения этого запуска"
+print(f"RAM-диск проверен: {device} = {expected}")
+PY
+    ram_verified=yes
+    diskutil eraseVolume APFS VIDCLI "$ram_device" >/dev/null \
+        || fail "не удалось отформатировать проверенный RAM-диск $ram_device"
+
+    # Фактический контейнер и точка монтирования: имя тома могло получить
+    # суффикс, а контейнер — другой номер диска.
+    local ram_container
+    ram_container="$(diskutil info -plist "$ram_device" 2>/dev/null | python3 -c '
+import plistlib, sys
+
+plist = plistlib.loads(sys.stdin.buffer.read())
+print(plist.get("APFSContainerReference") or "")
+' 2>/dev/null || true)"
+    [[ -n "$ram_container" ]] \
+        || fail "RAM-носитель $ram_device не дал APFS-контейнера"
+    ram_mount="$(diskutil list -plist "$ram_container" 2>/dev/null | python3 -c '
+import plistlib, sys
+
+plist = plistlib.loads(sys.stdin.buffer.read())
+for disk in plist.get("AllDisksAndPartitions", []):
+    for key in ("APFSVolumes", "Partitions"):
+        for volume in disk.get(key) or []:
+            mount = volume.get("MountPoint") or ""
+            if mount:
+                print(mount)
+                sys.exit(0)
+sys.exit(1)
+')" || fail "не найдена фактическая точка монтирования RAM-тома $ram_container"
+    [[ -n "$ram_mount" && -d "$ram_mount" ]] \
+        || fail "точка монтирования RAM-тома не является каталогом: «$ram_mount»"
 }
 
 detach_all_volumes() {
+    # Образ: отсоединяется по своей точке монтирования и файлу образа,
+    # которые живут внутри test_dir и создаются только этим запуском.
     if [[ -d "$image_mount" ]]; then
         for _ in {1..5}; do
             hdiutil detach "$image_mount" -quiet >/dev/null 2>&1 && break
@@ -72,10 +141,17 @@ detach_all_volumes() {
             sleep 1
         done
     fi
-    if [[ -n "$ram_mount" && -d "$ram_mount" ]]; then
-        hdiutil detach "$ram_mount" -quiet >/dev/null 2>&1 \
-            || diskutil eject "$ram_device" >/dev/null 2>&1 \
-            || hdiutil detach "$ram_mount" -force -quiet >/dev/null 2>&1 || true
+    # RAM-диск: отсоединяется ТОЛЬКО устройство, принадлежность которого
+    # доказана этим запуском (ram_verified=yes). При ранней ошибке до
+    # завершения проверки ничего не отсоединяется: оставить собственный
+    # носитель безопаснее, чем отсоединить чужой диск по непроверенному пути.
+    if [[ "$ram_verified" == yes && -n "$ram_device" ]]; then
+        for _ in {1..5}; do
+            hdiutil detach "$ram_device" -quiet >/dev/null 2>&1 && return 0
+            diskutil eject "$ram_device" >/dev/null 2>&1 && return 0
+            sleep 1
+        done
+        hdiutil detach "$ram_device" -force -quiet >/dev/null 2>&1 || true
     fi
 }
 trap detach_all_volumes EXIT
@@ -202,6 +278,9 @@ print "PASS: другой том (образ) на том же физическ�
 # 4. RAM-диск — действительно другой носитель: успешный путь с настоящим
 #    untrunc, ffprobe и неизменными входами.
 create_ram_volume
+ram_volume_device="$(df -k "$ram_mount" | awk 'NR==2{print $1}')"
+[[ -n "$ram_volume_device" && "$ram_volume_device" != "$inputs_volume" ]] \
+    || fail "тестовая конфигурация: RAM-том на устройстве входов ($ram_volume_device)"
 volume_out="$ram_mount/out"
 mkdir -p "$volume_out"
 
