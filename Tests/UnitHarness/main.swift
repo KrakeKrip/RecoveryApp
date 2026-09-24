@@ -1304,6 +1304,88 @@ check(mixedSummary.savedCount == 5 && mixedSummary.sizeMatchesCount == 2
 check(mixedSummary.message.contains("Совпадение размеров не является проверкой целостности содержимого."),
       "смешанный результат напоминает про границы сверки размеров")
 
+// TASK-007 (ревью): скан → обновление списка → тот же diskN, другое
+// устройство → находки сбрасываются, сессия сбрасывается, показан отказ.
+final class DriveSnapshotBox: @unchecked Sendable {
+    var drives: [ExternalDrive]
+    init(_ drives: [ExternalDrive]) { self.drives = drives }
+}
+
+nonisolated(unsafe) private var viewModelFactoryCalls = 0
+
+let viewModelBox = DriveSnapshotBox([guiSelectedDrive])
+let viewModelSessions = PhysicalQuickSessionCoordinator(makeRecovery: {
+    viewModelFactoryCalls += 1
+    return PhysicalQuickRecovery(helper: URL(fileURLWithPath: "/nonexistent/helper"), launcher: nil)
+})
+let viewModelExecutor = DeletedFilesExecutor(physicalSessions: viewModelSessions)
+let refreshModel = DeletedFilesViewModel(
+    driveSnapshot: { viewModelBox.drives },
+    executor: viewModelExecutor
+)
+
+// Имитация завершённого скана подтверждённого источника.
+refreshModel.selectDrive(id: guiSelectedDrive.id)
+refreshModel.recordScannedSource(guiSelectedDrive)
+check(refreshModel.scannedSourceIdentity == PhysicalSourceIdentity(guiSelectedDrive),
+      "скан фиксирует идентичность источника")
+refreshModel.candidates = [DeletedFileCandidate(
+    id: "7:4:A.TXT",
+    path: "A.TXT",
+    inode: "4",
+    partitionOffset: 0
+)]
+refreshModel.selection = ["7:4:A.TXT"]
+refreshModel.state = .scanFinished
+let refreshFactoryBefore = viewModelFactoryCalls
+_ = try viewModelSessions.recovery(for: guiSelectedDrive)
+check(viewModelFactoryCalls == refreshFactoryBefore + 1,
+      "сессия создана до подмены источника")
+
+// Обновление списка: тот же disk7, но другое имя и размер.
+viewModelBox.drives = [try makeSyntheticDrive(
+    identifier: "disk7",
+    name: "SWAPPED USB",
+    size: 64_000_000_000
+)]
+await refreshModel.refreshDrives()
+check(refreshModel.candidates.isEmpty, "подменённый источник сбрасывает находки")
+check(refreshModel.selection.isEmpty, "выбор устаревших находок очищается")
+check(refreshModel.scannedSourceIdentity == nil,
+      "идентичность сканирования сбрасывается после подмены")
+check(refreshModel.state == .failed(UserFacingFailure.make(from: DeletedFilesError.sourceChanged)),
+      "показана карточка «Источник изменился»")
+let refreshFactoryAfterSwap = viewModelFactoryCalls
+_ = try viewModelSessions.recovery(for: guiSelectedDrive)
+check(viewModelFactoryCalls == refreshFactoryAfterSwap + 1,
+      "quick-сессия сброшена после подмены (создана заново)")
+
+// Обновление без изменений идентичности — находки нового скана остаются.
+refreshModel.recordScannedSource(try makeSyntheticDrive(
+    identifier: "disk7",
+    name: "SWAPPED USB",
+    size: 64_000_000_000
+))
+refreshModel.candidates = [DeletedFileCandidate(
+    id: "7:9:B.TXT",
+    path: "B.TXT",
+    inode: "9",
+    partitionOffset: 0
+)]
+refreshModel.selection = ["7:9:B.TXT"]
+refreshModel.state = .scanFinished
+await refreshModel.refreshDrives()
+check(refreshModel.state == .scanFinished && refreshModel.candidates.count == 1,
+      "обновление без изменений идентичности не сбрасывает находки")
+
+// Источник исчез: находки сбрасываются, показан «Накопитель отключён».
+viewModelBox.drives = []
+await refreshModel.refreshDrives()
+check(refreshModel.candidates.isEmpty && refreshModel.scannedSourceIdentity == nil,
+      "исчезновение источника сбрасывает находки и идентичность")
+check(refreshModel.state == .failed(UserFacingFailure.make(from: DeletedFilesError.sourceUnavailable)),
+      "показана карточка «Накопитель отключён»")
+
 print("PASS: \(checkCount) domain checks")
 
 print("PASS: \(checkCount) domain checks")

@@ -21,6 +21,22 @@ struct PhysicalSourceIdentity: Equatable, Sendable {
     }
 }
 
+/// Проверка устаревания находок после обновления списка накопителей: если
+/// диск с тем же `diskN` изменил имя или размер (или исчез), находки
+/// сканирования устарели и должны быть сброшены до всякой авторизации.
+enum ScannedSourceRefresh {
+    static func outdatedReason(
+        scanned: PhysicalSourceIdentity?,
+        snapshot: [ExternalDrive]
+    ) -> DeletedFilesError? {
+        guard let scanned else { return nil }
+        guard let current = snapshot.first(where: { $0.id == scanned.identifier }) else {
+            return .sourceUnavailable
+        }
+        return scanned.matches(current) ? nil : .sourceChanged
+    }
+}
+
 /// Координатор одной физической quick-сессии GUI: для подтверждённого диска
 /// создаётся один `PhysicalQuickRecovery` (с его ленивой авторизационной
 /// сессией) и переиспользуется для scan и recover того же источника; смена

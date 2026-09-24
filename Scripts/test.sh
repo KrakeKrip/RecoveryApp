@@ -34,6 +34,7 @@ swiftc \
     -lRecoveryCore \
     Sources/RecoveryApp/AppModel.swift \
     Sources/RecoveryApp/DeletedFilesRecovery.swift \
+    Sources/RecoveryApp/DeletedFilesViewModel.swift \
     Sources/RecoveryApp/UserFacingFailure.swift \
     Sources/recoveryapp-cli/CLIReports.swift \
     Sources/recoveryapp-cli/CommandLineParser.swift \
