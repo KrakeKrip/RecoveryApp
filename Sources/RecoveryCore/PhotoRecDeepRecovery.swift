@@ -63,6 +63,11 @@ public final class PhotoRecDeepRecovery: @unchecked Sendable {
     private let lock = NSLock()
     private var process: Process?
     private var cancellationMarkerURL: URL?
+    /// Запрос отмены запоминается навсегда: он мог прийти до запуска
+    /// дочернего процесса или в окне между регистрацией Process и run(),
+    /// когда отменять ещё нечего. Экземпляр одноразовый: после cancel()
+    /// следующий recover на нём не запускает процессы.
+    private var cancellationRequested = false
 
     /// `photorec` требуется только образному режиму: физический источник
     /// обслуживает read-only helper, запускающий photorec из своей папки.
@@ -131,12 +136,15 @@ public final class PhotoRecDeepRecovery: @unchecked Sendable {
         }
     }
 
-    /// Отмена: для физического источника ставится marker-файл, который
-    /// read-only helper обрабатывает сам и останавливает всю группу PhotoRec;
-    /// для образа группа процессов PhotoRec останавливается сигналами. Уже
+    /// Отмена: запрос запоминается, поэтому не теряется, даже если придёт до
+    /// запуска дочернего процесса или между регистрацией Process и run().
+    /// Для физического источника ставится marker-файл, который read-only
+    /// helper обрабатывает сам и останавливает всю группу PhotoRec; для
+    /// образа группа процессов PhotoRec останавливается сигналами. Уже
     /// найденные файлы и папка сессии не удаляются.
     public func cancel() {
         lock.lock()
+        cancellationRequested = true
         let runningProcess = process
         let markerURL = cancellationMarkerURL
         let usesLauncher = launcher != nil
@@ -146,6 +154,7 @@ public final class PhotoRecDeepRecovery: @unchecked Sendable {
                 atPath: markerURL.path,
                 contents: Data()
             )
+            scheduleMarkerRetry()
             return
         }
         guard let runningProcess, runningProcess.isRunning else { return }
@@ -168,6 +177,27 @@ public final class PhotoRecDeepRecovery: @unchecked Sendable {
                     kill(pid, SIGKILL)
                 }
             }
+        }
+    }
+
+    /// helper стирает stop-файл до входа в свой цикл проверки (у raw-устройства
+    /// между запуском и этим стиранием работает authopen). Если запрос отмены
+    /// пришёл в этом окне, marker мог быть проглочен. Пока helper работает и
+    /// отмена запрошена, marker создаётся заново каждые полсекунды; после
+    /// завершения helper (`process == nil`) цепочка обрывается.
+    private func scheduleMarkerRetry() {
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.5) { [self] in
+            lock.lock()
+            let requested = cancellationRequested
+            let markerURL = cancellationMarkerURL
+            let running = process?.isRunning == true
+            lock.unlock()
+            guard requested, running, let markerURL else { return }
+            _ = FileManager.default.createFile(
+                atPath: markerURL.path,
+                contents: Data()
+            )
+            scheduleMarkerRetry()
         }
     }
 
@@ -246,6 +276,10 @@ public final class PhotoRecDeepRecovery: @unchecked Sendable {
             lock.lock()
             cancellationMarkerURL = nil
             lock.unlock()
+            // runTool уже завершился, значит helper вышел и сам удалил свой
+            // stop-файл; здесь убирается только «висящий» marker, созданный
+            // cancel() в окне до запуска helper.
+            try? FileManager.default.removeItem(at: markerURL)
         }
 
         emit("Источник: \(drive.displayName) (\(drive.rawDevicePath), только чтение).\n", onOutput)
@@ -482,6 +516,9 @@ public final class PhotoRecDeepRecovery: @unchecked Sendable {
         launchedProcess.standardInput = inputPipe ?? FileHandle.nullDevice
 
         lock.lock()
+        // Чтение запроса отмены под той же блокировкой, что и регистрация:
+        // запрос до этого момента запрещает сам запуск.
+        let cancellationWasRequested = cancellationRequested
         process = launchedProcess
         lock.unlock()
         defer {
@@ -490,10 +527,24 @@ public final class PhotoRecDeepRecovery: @unchecked Sendable {
             lock.unlock()
         }
 
+        // Ранний Ctrl-C: запрос запомнен cancel(), дочерний процесс не нужен.
+        if cancellationWasRequested {
+            throw DeletedFilesError.cancelled
+        }
+
         do {
             try launchedProcess.run()
         } catch {
             throw DeletedFilesError.launchFailed(error.localizedDescription)
+        }
+        // Окно между регистрацией Process и run(): отмена могла прийти, когда
+        // отменять ещё было нечего. Гасим только что запущенный процесс; его
+        // гибель от сигнала доходит до вызывающего кода как обычная отмена.
+        lock.lock()
+        let cancellationArrivedDuringLaunch = cancellationRequested
+        lock.unlock()
+        if cancellationArrivedDuringLaunch {
+            cancel()
         }
         if let standardInput, let inputPipe {
             inputPipe.fileHandleForWriting.write(standardInput)

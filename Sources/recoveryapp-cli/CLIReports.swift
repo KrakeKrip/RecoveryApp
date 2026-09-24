@@ -259,6 +259,46 @@ struct DeepErrorEvent: Encodable {
     let message: String
 }
 
+/// Вывод машинных событий и диагностики deep recover. stdout в режиме --jsonl
+/// содержит только по одному валидному JSON-объекту на строку: событие и
+/// перевод строки записываются одной атомарной записью под блокировкой, чтобы
+/// параллельные события (прогресс, started) не рвали строки друг друга.
+/// Запись через FileHandle сохраняет потоковый вывод при длительной операции.
+final class DeepEventEmitter: @unchecked Sendable {
+    private let jsonl: Bool
+    private let output: FileHandle
+    private let lock = NSLock()
+
+    init(jsonl: Bool, output: FileHandle = .standardOutput) {
+        self.jsonl = jsonl
+        self.output = output
+    }
+
+    func jsonLine<T: Encodable>(_ value: T) {
+        guard jsonl else { return }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard var data = try? encoder.encode(value) else { return }
+        data.append(contentsOf: "\n".utf8)
+        lock.lock()
+        defer { lock.unlock() }
+        output.write(data)
+    }
+
+    func diagnostic(_ text: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        FileHandle.standardError.write(Data(text.utf8))
+    }
+
+    func textLine(_ text: String) {
+        let data = Data((text + "\n").utf8)
+        lock.lock()
+        defer { lock.unlock() }
+        output.write(data)
+    }
+}
+
 /// Стабильные коды ошибки для события error; строка сообщения понятна
 /// пользователю и может уточняться без смены кода.
 func deepErrorCode(for error: Error) -> String {

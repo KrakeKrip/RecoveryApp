@@ -327,11 +327,14 @@ private func runDeepRecover(
     }
 
     // 4. Итог: completed (код 0), cancelled (код 130) или error (код 1).
+    // Перед терминальным событием progressPump останавливается и дожидается:
+    // событие progress не может выйти после completed/cancelled/error.
     let result: DeepRecoveryResult
     do {
         result = try await recoveryTask.value
     } catch {
         progressPump.cancel()
+        await progressPump.value
         if isDeepCancellation(error) {
             let files = deepCancelledFiles(sessionURL: state.currentSessionURL())
             emitter.jsonLine(DeepCancelledEvent(
@@ -356,6 +359,7 @@ private func runDeepRecover(
         return 1
     }
     progressPump.cancel()
+    await progressPump.value
     emitter.jsonLine(DeepCompletedEvent(
         sessionDirectory: result.outputDirectory.path,
         recoveredCount: result.recoveredFiles.count,
@@ -366,34 +370,6 @@ private func runDeepRecover(
         emitter.textLine("Папка сессии: \(result.outputDirectory.path)")
     }
     return 0
-}
-
-/// Вывод машинных событий и диагностики deep recover. stdout в режиме --jsonl
-/// содержит только по одному валидному JSON-объекту на строку; запись через
-/// FileHandle сохраняет потоковый вывод при длительной операции.
-private final class DeepEventEmitter: @unchecked Sendable {
-    private let jsonl: Bool
-
-    init(jsonl: Bool) {
-        self.jsonl = jsonl
-    }
-
-    func jsonLine<T: Encodable>(_ value: T) {
-        guard jsonl else { return }
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        guard let data = try? encoder.encode(value) else { return }
-        FileHandle.standardOutput.write(data)
-        FileHandle.standardOutput.write(Data("\n".utf8))
-    }
-
-    func diagnostic(_ text: String) {
-        FileHandle.standardError.write(Data(text.utf8))
-    }
-
-    func textLine(_ text: String) {
-        FileHandle.standardOutput.write(Data((text + "\n").utf8))
-    }
 }
 
 /// Технический прогресс физического режима — в stderr, stdout остаётся чистым.

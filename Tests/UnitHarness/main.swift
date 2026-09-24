@@ -684,4 +684,158 @@ check(parseJSONObject(encodeJSON(DeepErrorEvent(code: "imageMissing", message: "
       as? String == "imageMissing",
       "error содержит стабильный код")
 
+// Атомарность JSONL: параллельные события не склеивают и не рвут строки.
+let emitterFile = root.appendingPathComponent("emitter-events.jsonl")
+_ = FileManager.default.createFile(atPath: emitterFile.path, contents: nil)
+let emitterHandle = try FileHandle(forWritingTo: emitterFile)
+let emitter = DeepEventEmitter(jsonl: true, output: emitterHandle)
+let emitterWorkers = 8
+let emitterPerWorker = 25
+await withTaskGroup(of: Void.self) { group in
+    for worker in 0..<emitterWorkers {
+        group.addTask { @Sendable in
+            for index in 0..<emitterPerWorker {
+                emitter.jsonLine(DeepErrorEvent(
+                    code: "worker\(worker)-event\(index)",
+                    message: "тест атомарности"
+                ))
+            }
+        }
+    }
+}
+try? emitterHandle.close()
+let emitterLines = try String(contentsOf: emitterFile, encoding: .utf8)
+    .split(separator: "\n", omittingEmptySubsequences: true)
+check(emitterLines.count == emitterWorkers * emitterPerWorker,
+      "параллельные события дают \(emitterWorkers * emitterPerWorker) строк (получено \(emitterLines.count))")
+var seenEmitterCodes = Set<String>()
+for line in emitterLines {
+    guard let object = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+          let code = object["code"] as? String else {
+        check(false, "строка JSONL не является отдельным валидным JSON: \(line)")
+        continue
+    }
+    seenEmitterCodes.insert(code)
+}
+check(seenEmitterCodes.count == emitterWorkers * emitterPerWorker,
+      "каждая строка — целый отдельный JSON-объект без склейки")
+
+// Ранний Ctrl-C в Core (регрессия гонки до запуска дочернего процесса):
+// запрос отмены до recover запоминается и запрещает запуск PhotoRec.
+private func writeExecutableShim(_ url: URL, _ script: String) throws {
+    try script.write(to: url, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+}
+
+private func noProcess(named pattern: String) -> Bool {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+    process.arguments = ["-f", pattern]
+    process.standardOutput = FileHandle.nullDevice
+    process.standardError = FileHandle.nullDevice
+    do { try process.run() } catch { return true }
+    process.waitUntilExit()
+    return process.terminationStatus != 0
+}
+
+let deepCancelRoot = root.appendingPathComponent("deep-cancel", isDirectory: true)
+let deepCancelOut = deepCancelRoot.appendingPathComponent("out", isDirectory: true)
+try FileManager.default.createDirectory(at: deepCancelOut, withIntermediateDirectories: true)
+let earlyMarker = deepCancelRoot.appendingPathComponent("shim-started.txt")
+let cancelImage = deepCancelRoot.appendingPathComponent("shim-source.img")
+_ = FileManager.default.createFile(atPath: cancelImage.path, contents: Data("synthetic\n".utf8))
+let earlyShim = deepCancelRoot.appendingPathComponent("deep-cancel-shim-early.py")
+try writeExecutableShim(earlyShim, """
+#!/usr/bin/env python3
+import time
+
+open("\(earlyMarker.path)", "w").write("started\\n")
+time.sleep(60)
+""")
+
+let earlyBackend = PhotoRecDeepRecovery(photorec: earlyShim, launcher: nil)
+earlyBackend.cancel()
+do {
+    _ = try await earlyBackend.recover(imageURL: cancelImage, outputFolderURL: deepCancelOut)
+    check(false, "ранний cancel должен приводить к .cancelled")
+} catch let error as DeletedFilesError {
+    check(error == .cancelled, "ранний cancel даёт .cancelled (получено \(error))")
+} catch {
+    check(false, "ранний cancel даёт .cancelled")
+}
+check(!FileManager.default.fileExists(atPath: earlyMarker.path),
+      "после раннего cancel PhotoRec-shim не запускался")
+
+// Отмена во время работы: запомненный запрос останавливает дочерний процесс,
+// найденное сохраняется; живых процессов после отмены нет.
+let midMarker = deepCancelRoot.appendingPathComponent("shim-running.txt")
+let midOut = deepCancelRoot.appendingPathComponent("out-mid", isDirectory: true)
+try FileManager.default.createDirectory(at: midOut, withIntermediateDirectories: true)
+let midFile = midOut
+    .appendingPathComponent("PhotoRec-Recovery", isDirectory: true)
+    .appendingPathComponent("Recovered.1", isDirectory: true)
+    .appendingPathComponent("f000001.jpg")
+let midShim = deepCancelRoot.appendingPathComponent("deep-cancel-shim-running.py")
+try writeExecutableShim(midShim, """
+#!/usr/bin/env python3
+import os, sys, time
+
+args = sys.argv[1:]
+i = 0
+base = None
+while i < len(args):
+    if args[i] == "/d":
+        i += 1
+        base = args[i]
+    i += 1
+
+directory = base + ".1"
+os.makedirs(directory, exist_ok=True)
+open("\(midMarker.path)", "w").write("running\\n")
+open(directory + "/f000001.jpg", "wb").write(b"RECOVERYAPP-HARNESS-CANCEL\\n")
+time.sleep(60)
+""")
+
+let midBackend = PhotoRecDeepRecovery(photorec: midShim, launcher: nil)
+// Detached: главный поток занят опросом, унаследованный Task не стартовал бы.
+let midTask = Task.detached {
+    try await midBackend.recover(imageURL: cancelImage, outputFolderURL: midOut)
+}
+var midWaited = 0
+while !FileManager.default.fileExists(atPath: midFile.path), midWaited < 250 {
+    // Асинхронный сон: колбэки Core (@MainActor) должны успевать выполняться,
+    // блокировка главного потока здесь приводит к взаимной ожидании.
+    try await Task.sleep(for: .milliseconds(20))
+    midWaited += 1
+}
+if !FileManager.default.fileExists(atPath: midFile.path) {
+    // Диагностика: показать реальную причину, почему находка не появилась.
+    do {
+        _ = try await midTask.value
+        check(false, "shim успел создать находку до отмены (recover завершился успешно)")
+    } catch {
+        check(false, "shim успел создать находку до отмены (recover упал: \(type(of: error)): \(error))")
+    }
+}
+check(FileManager.default.fileExists(atPath: midFile.path),
+      "shim успел создать находку до отмены")
+midBackend.cancel()
+do {
+    _ = try await midTask.value
+    check(false, "отмена во время работы даёт .cancelled")
+} catch let error as DeletedFilesError {
+    check(error == .cancelled, "отмена во время работы даёт .cancelled (получено \(error))")
+} catch {
+    check(false, "отмена во время работы даёт .cancelled")
+}
+check(FileManager.default.fileExists(atPath: midFile.path),
+      "найденные до отмены файлы сохраняются")
+var goneWaited = 0
+while goneWaited < 150, !noProcess(named: "deep-cancel-shim-running") {
+    try await Task.sleep(for: .milliseconds(20))
+    goneWaited += 1
+}
+check(noProcess(named: "deep-cancel-shim-running"),
+      "после отмены нет живого дочернего процесса")
+
 print("PASS: \(checkCount) domain checks")

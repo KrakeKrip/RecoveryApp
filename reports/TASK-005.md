@@ -7,6 +7,55 @@
 Ветка: `glm/task-005-cli-photorec`, базовый коммит
 `496e2cead97cb646ebcf3e166066056153482b01` (совпадает с `main` на момент старта).
 
+## Исправления по замечаниям ревью (второй коммит ветки)
+
+1. **Устойчивость отмены к гонке до запуска дочернего процесса**
+   (`Sources/RecoveryCore/PhotoRecDeepRecovery.swift`):
+   - `cancel()` теперь безусловно запоминает запрос (`cancellationRequested`
+     под блокировкой); экземпляр после cancel() одноразовый — повторный
+     `recover` процессы не запускает;
+   - `runTool` читает флаг под той же блокировкой, что и регистрация Process:
+     запрос, пришедший до запуска, запрещает сам запуск (throw `cancelled`
+     без создания дочернего процесса);
+   - закрыто окно «регистрация Process → `run()`»: после успешного запуска
+     флаг перечитывается, и если отмена пришла в окне, немедленно вызывается
+     `cancel()` — только что запущенный процесс гасится сигналом (для
+     helper-режима ставится marker), а его гибель доходит до вызывающего кода
+     как обычная отмена;
+   - для marker-файла helper добавлен повтор: helper стирает stop-файл до
+     входа в свой цикл проверки (у raw-устройства между запуском и стиранием
+     работает authopen), поэтому пока helper работает и отмена запрошена,
+     marker создаётся заново каждые 0,5 с; после выхода helper цепочка
+     обрывается (`process == nil`);
+   - `defer` в `recoverDriveBlocking` дополнительно удаляет «висящий»
+     marker, созданный cancel() в окне до запуска helper (runTool к этому
+     моменту завершён, свой stop-файл helper уже удалил).
+   - Регрессионные тесты: в `Tests/UnitHarness/main.swift` — ранний cancel
+     до `recover` на python-shim (процесс не запускается, маркер запуска
+     не появляется, ошибка `.cancelled`) и cancel во время работы (найденный
+     файл сохраняется, `pgrep` не находит живого дочернего процесса). В
+     `Scripts/test-deep-photorec-cli.sh` — секция 6b «ранний Ctrl-C»: CLI
+     получает SIGINT в окне между созданием папки сессии и запуском PhotoRec
+     (`DEEP_SHIM_START_DELAY=3`), код 130, последнее событие `cancelled`,
+     ни одного найденного файла, ни одного живого shim-процесса, чистый cwd.
+2. **Порядок и атомарность JSONL**
+   (`Sources/recoveryapp-cli/main.swift`, `Sources/recoveryapp-cli/CLIReports.swift`):
+   - перед выдачей completed/cancelled/error CLI теперь останавливает
+     progressPump и дожидается его завершения (`progressPump.cancel()` +
+     `await progressPump.value`) — событие progress не может выйти после
+     терминального;
+   - `DeepEventEmitter` перенесён в `CLIReports.swift`: событие и перевод
+     строки кодируются в один `Data` и пишутся одной записью `FileHandle`
+     под `NSLock` (параллельные события прогресса/started не рвут строки);
+     вывод диагностик и текстовых строк синхронизирован той же блокировкой;
+     выходной `FileHandle` инъекцируется для тестируемости;
+   - тесты: доменный тест атомарности — 8 параллельных задач × 25 событий,
+     каждая строка файла — целый отдельный JSON, все 200 уникальных кодов
+     на месте; в `test-deep-photorec-cli.sh` все JSONL-валидаторы усилены
+     явной проверкой «терминальное событие ровно одно и всегда последнее».
+
+Результаты проверок после исправлений — в конце раздела «Проверки».
+
 ## Реализовано
 
 - Новый общий PhotoRec-бэкенд в `RecoveryCore`
@@ -147,6 +196,27 @@
   и MP4): `completed` с `recoveredCount: 2`, оба файла совпадают с оригиналами
   побайтно (`cmp`);
 - чистый образ: код 0, `completed` с `recoveredCount: 0` и пустым `files`.
+
+Проверки после исправлений по ревью (второй прогон, все команды полностью):
+
+| Команда | Результат | Вывод |
+|---|---|---|
+| `./Scripts/test.sh` | PASS | `PASS: 158 domain checks` (+3 ранний cancel, +3 cancel во время работы, +2 атомарность JSONL; 150 → 158) |
+| `./Scripts/test-cli.sh` | PASS | контракт CLI не сломан |
+| `./Scripts/test-quick-image-cli.sh` | PASS | все группы |
+| `./Scripts/test-physical-quick-cli-contract.sh` | PASS | сверка до авторизации сохранена |
+| `./Scripts/test-metadata-helper.sh` | PASS | побайтно, код 74 |
+| `./Scripts/test-readonly-helper.sh` | PASS | включая отмену helper и прогресс секторов (marker retry не мешает штатной остановке) |
+| `./Scripts/test-deleted-recovery.sh` | PASS | FAT32/exFAT + отмена группы PhotoRec |
+| `./Scripts/test-deep-photorec-cli.sh` | PASS | 15 PASS-строк, включая новые: ранний Ctrl-C (код 130, `cancelled` последним, 0 находок, 0 процессов, чистый cwd) и усиленный порядок событий |
+| `swift build --disable-sandbox --scratch-path work/swift-t005 -c release --product recoveryapp-cli` | PASS | `Build complete! (19,15 secs)` |
+| `OUTPUT_DIR="$(mktemp -d)" ./Scripts/build-app.sh` | PASS | `.app` во временной папке |
+| `codesign --verify --deep --strict <временная>/RecoveryApp.app` | PASS | строгая ad-hoc-подпись |
+| `git diff --check HEAD` | PASS | пусто |
+
+Физические накопители, authopen, Authorization Services и GUI при
+исправлениях не использовались: только синтетические образы, python-shim
+PhotoRec и скомпилированный `tool-launcher`.
 
 ## Не проверено
 

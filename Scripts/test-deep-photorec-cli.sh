@@ -40,6 +40,10 @@ cat > "$tools_dir/photorec-shim" <<'PY'
 #!/usr/bin/env python3
 import os, sys, time
 
+start_delay = float(os.environ.get("DEEP_SHIM_START_DELAY", "0"))
+if start_delay:
+    time.sleep(start_delay)
+
 args = sys.argv[1:]
 log = base = image = None
 i = 0
@@ -203,7 +207,9 @@ kinds = [event["event"] for event in events]
 assert kinds[0] == "started", kinds
 assert kinds[-1] == "completed", kinds
 assert "progress" in kinds, kinds
-assert "error" not in kinds and "cancelled" not in kinds, kinds
+# Терминальное событие ровно одно и всегда последнее.
+terminal = {"completed", "cancelled", "error"}
+assert not (set(kinds[:-1]) & terminal), kinds
 
 started = events[0]
 assert started["source"]["type"] == "image", started
@@ -300,6 +306,8 @@ kinds = [event["event"] for event in events]
 assert kinds[0] == "started", kinds
 assert kinds[-1] == "cancelled", kinds
 assert "completed" not in kinds and "error" not in kinds, kinds
+terminal = {"completed", "cancelled", "error"}
+assert not (set(kinds[:-1]) & terminal), kinds
 cancelled = events[-1]
 assert cancelled["schemaVersion"] == 1, cancelled
 assert cancelled["sessionDirectory"], cancelled
@@ -314,6 +322,56 @@ test -n "$cancel_session"
 test -f "$cancel_session/photorec.ses" || fail "папка сессии должна сохраниться с её файлами"
 assert_clean_scratch "$test_dir/scratch-cancel" "отмена"
 print "PASS: Ctrl-C даёт код 130, сохраняет находки и не оставляет процессов"
+
+# 6b. Ранний Ctrl-C: сигнал приходит после создания папки сессии, но до
+#     запуска PhotoRec (shim ещё спит). Запрос отмены не должен потеряться.
+mkdir -p "$test_dir/scratch-early" "$test_dir/out-early"
+export DEEP_SHIM_START_DELAY=3
+(
+    cd "$test_dir/scratch-early" || exit 97
+    exec "$cli" deep recover --image "$shim_image" --output "$test_dir/out-early" --jsonl \
+        > "$test_dir/early.out" 2> "$test_dir/early.err"
+) &
+early_pid=$!
+early_session=""
+for _ in {1..300}; do
+    early_session="$(find "$test_dir/out-early" -mindepth 1 -maxdepth 1 -type d -print -quit 2>/dev/null)"
+    [[ -n "$early_session" ]] && break
+    sleep 0.05
+done
+[[ -n "$early_session" ]] || fail "сессия для раннего Ctrl-C не создалась"
+kill -INT "$early_pid" || fail "не удалось отправить ранний SIGINT"
+set +e
+wait "$early_pid"
+early_rc=$?
+set -e
+unset DEEP_SHIM_START_DELAY
+[[ "$early_rc" -eq 130 ]] || fail "ожидался код 130 при раннем Ctrl-C (получен $early_rc)"
+sleep 2
+if pgrep -f "$tools_dir/photorec-shim" >/dev/null 2>&1; then
+    fail "после раннего Ctrl-C остался живой дочерний процесс PhotoRec"
+fi
+[[ -z "$(find "$test_dir/out-early" -name '*.jpg' -print -quit 2>/dev/null)" ]] \
+    || fail "при раннем Ctrl-C PhotoRec не должен успеть найти файлы"
+python3 - "$test_dir/early.out" <<'PY'
+import json, sys
+
+events = []
+with open(sys.argv[1], encoding="utf-8") as handle:
+    for line in handle:
+        line = line.strip()
+        if line:
+            events.append(json.loads(line))
+kinds = [event["event"] for event in events]
+assert kinds, "ожидается хотя бы одно событие"
+assert kinds[-1] == "cancelled", kinds
+assert "completed" not in kinds and "error" not in kinds, kinds
+if "started" in kinds:
+    assert kinds[0] == "started", kinds
+print("PASS: ранний Ctrl-C даёт терминальное событие cancelled последним")
+PY
+assert_clean_scratch "$test_dir/scratch-early" "ранний Ctrl-C"
+print "PASS: ранний Ctrl-C не теряется, PhotoRec не находит файлы, процессов нет"
 
 # 7. End-to-end со встроенным PhotoRec на синтетическом FAT32-образе:
 #    удалённые PNG и MP4 восстанавливаются побайтно.
@@ -349,6 +407,8 @@ with open(sys.argv[1], encoding="utf-8") as handle:
 kinds = [event["event"] for event in events]
 assert kinds[0] == "started" and kinds[-1] == "completed", kinds
 assert "error" not in kinds and "cancelled" not in kinds, kinds
+terminal = {"completed", "cancelled", "error"}
+assert not (set(kinds[:-1]) & terminal), kinds
 completed = events[-1]
 assert completed["recoveredCount"] == 2, completed
 kinds_lower = [path.lower() for path in completed["files"]]
@@ -382,6 +442,8 @@ with open(sys.argv[1], encoding="utf-8") as handle:
             events.append(json.loads(line))
 kinds = [event["event"] for event in events]
 assert kinds[0] == "started" and kinds[-1] == "completed", kinds
+terminal = {"completed", "cancelled", "error"}
+assert not (set(kinds[:-1]) & terminal), kinds
 completed = events[-1]
 assert completed["recoveredCount"] == 0, completed
 assert completed["files"] == [], completed
