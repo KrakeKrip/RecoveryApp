@@ -191,23 +191,16 @@ final class DeletedFilesViewModel: ObservableObject {
             let found = try await driveSnapshot()
             drives = found
             // Находки сканирования устаревают, если диск с тем же diskN
-            // подменили (другое имя/размер) или он исчез: сбрасываем находки
-            // и физическую quick-сессию до всякой авторизации. Во время
-            // операции пропускаем — операция сама сверяет источник.
+            // подменили (другое имя/размер) или он исчез: сбрасываем находки,
+            // выбор и физическую quick-сессию в ЛЮБОМ состоянии экрана, до
+            // всякой авторизации. Во время операции пропускаем — операция
+            // сверяет источник сама, а открытый read-only дескриптор
+            // принадлежит проверенному устройству.
             if !isBusy, let reason = ScannedSourceRefresh.outdatedReason(
                 scanned: scannedSourceIdentity,
                 snapshot: found
-            ), state == .scanFinished {
+            ) {
                 discardStaleFindings(reason: reason)
-            } else if !isBusy, scannedSourceIdentity != nil,
-                      ScannedSourceRefresh.outdatedReason(
-                          scanned: scannedSourceIdentity,
-                          snapshot: found
-                      ) != nil {
-                // Находки уже не показываются — тихо сбрасываем сессию и
-                // устаревшую идентичность.
-                scannedSourceIdentity = nil
-                executor.resetPhysicalSession()
             }
             if let selectedDriveID, !found.contains(where: { $0.id == selectedDriveID }) {
                 self.selectedDriveID = nil
@@ -295,6 +288,17 @@ final class DeletedFilesViewModel: ObservableObject {
                     // запуска инструмента и до новой авторизации; сессия
                     // переиспользуется только при том же источнике.
                     let confirmed = try await confirmPhysicalSource(drive)
+                    // Находки принадлежат источнику сканирования: если
+                    // подтверждённый диск с ним не совпадает (подмена между
+                    // сканом и восстановлением), отказываем до авторизации
+                    // и очищаем чужие находки.
+                    if let scanned = scannedSourceIdentity, !scanned.matches(confirmed) {
+                        candidates = []
+                        selection = []
+                        scannedSourceIdentity = nil
+                        executor.resetPhysicalSession()
+                        throw DeletedFilesError.sourceChanged
+                    }
                     try PhysicalQuickRecovery.preflightRecoveryOutput(
                         outputFolderURL: outputFolderURL,
                         drive: confirmed
@@ -434,7 +438,9 @@ final class DeletedFilesViewModel: ObservableObject {
     private func handle(_ error: DeletedFilesError) {
         let stoppedSessionURL = activeSessionURL
         finishTimer()
-        scannedSourceIdentity = nil
+        // Идентичность скана сохраняется: находки остаются для повторной
+        // попытки, а обновление списка при подмене носителя всё равно
+        // отбросит их (см. refreshDrives).
         executor.resetPhysicalSession()
         if error == .cancelled {
             state = .cancelled(stoppedSessionURL)

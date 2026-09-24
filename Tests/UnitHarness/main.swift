@@ -1386,6 +1386,119 @@ check(refreshModel.candidates.isEmpty && refreshModel.scannedSourceIdentity == n
 check(refreshModel.state == .failed(UserFacingFailure.make(from: DeletedFilesError.sourceUnavailable)),
       "показана карточка «Накопитель отключён»")
 
+// Цепочка ревью: скан A → ошибка выбора папки на A → подмена на B с тем же
+// diskN → обновление → выбор допустимой папки → восстановление недоступно.
+nonisolated(unsafe) private var chainFactoryCalls = 0
+
+let chainMount = root.appendingPathComponent("chain-mnt", isDirectory: true)
+let chainBlockedFolder = chainMount.appendingPathComponent("blocked", isDirectory: true)
+try FileManager.default.createDirectory(at: chainBlockedFolder, withIntermediateDirectories: true)
+let chainDriveA = try makeSyntheticDrive(
+    identifier: "disk6",
+    name: "CHAIN USB",
+    size: 32_000_000_000,
+    mountPoint: chainMount.path
+)
+let chainDriveB = try makeSyntheticDrive(identifier: "disk6", name: "SWAPPED CHAIN", size: 16_000_000_000)
+let chainBox = DriveSnapshotBox([chainDriveA])
+let chainSessions = PhysicalQuickSessionCoordinator(makeRecovery: {
+    chainFactoryCalls += 1
+    return PhysicalQuickRecovery(helper: URL(fileURLWithPath: "/nonexistent/helper"), launcher: nil)
+})
+let chainExecutor = DeletedFilesExecutor(physicalSessions: chainSessions)
+let chainModel = DeletedFilesViewModel(
+    driveSnapshot: { chainBox.drives },
+    executor: chainExecutor
+)
+let chainValidFolder = root.appendingPathComponent("chain-out", isDirectory: true)
+try FileManager.default.createDirectory(at: chainValidFolder, withIntermediateDirectories: true)
+
+// Шаг 1: скан источника A, находки показаны.
+chainBox.drives = [chainDriveA]
+await chainModel.refreshDrives()
+chainModel.selectDrive(id: chainDriveA.id)
+chainModel.recordScannedSource(chainDriveA)
+chainModel.candidates = [DeletedFileCandidate(
+    id: "6:8:C.PNG",
+    path: "C.PNG",
+    inode: "8",
+    partitionOffset: 0
+)]
+chainModel.selection = ["6:8:C.PNG"]
+chainModel.state = .scanFinished
+// Шаг 2: пользователь выбирает папку на источнике A — отказ, находки A
+// остаются доступными для повторной попытки на том же носителе.
+chainModel.selectOutputFolder(chainBlockedFolder)
+check(chainModel.outputFolderURL == nil
+      && chainModel.state == .failed(UserFacingFailure(
+          title: "Нужен другой диск",
+          message: "Нельзя сохранять восстановленные файлы на исходный накопитель."
+      )),
+      "папка на источнике A отклоняется")
+// Шаг 3: подмена на B с тем же diskN и обновление списка — устаревшие
+// находки очищаются в состоянии ошибки (любой экран), сессия сбрасывается.
+chainBox.drives = [chainDriveB]
+await chainModel.refreshDrives()
+check(chainModel.candidates.isEmpty && chainModel.selection.isEmpty,
+      "подмена на B очищает устаревшие находки в состоянии ошибки")
+check(chainModel.scannedSourceIdentity == nil,
+      "идентичность скана A сброшена после подмены")
+check(chainModel.state == .failed(UserFacingFailure.make(from: DeletedFilesError.sourceChanged)),
+      "показана карточка «Источник изменился» вместо ошибки папки")
+let chainFactoryBefore = chainFactoryCalls
+_ = try chainSessions.recovery(for: chainDriveA)
+check(chainFactoryCalls == chainFactoryBefore + 1,
+      "quick-сессия сброшена после подмены (создана заново)")
+// Шаг 4: выбор допустимой папки принимается.
+chainModel.selectOutputFolder(chainValidFolder)
+check(chainModel.outputFolderURL == chainValidFolder && chainModel.state == .ready,
+      "допустимая папка принята после подмены")
+// Шаг 5: восстановление недоступно — находки принадлежат другому носителю.
+check(chainModel.canRecover == false,
+      "восстановление недоступно без находок сканирования")
+
+// Защита в recoverSelected: подтверждённый диск не совпал с идентичностью
+// скана (подмена между сканом и восстановлением без обновления списка) —
+// отказ до авторизации, чужие находки очищены.
+chainBox.drives = [chainDriveA]
+chainModel.selectDrive(id: chainDriveA.id)
+chainModel.recordScannedSource(chainDriveA)
+chainModel.candidates = [DeletedFileCandidate(
+    id: "6:9:D.MP4",
+    path: "D.MP4",
+    inode: "9",
+    partitionOffset: 0
+)]
+chainModel.selection = ["6:9:D.MP4"]
+chainModel.state = .scanFinished
+// Список накопителей уже показывает B, а идентичность скана — A.
+chainBox.drives = [chainDriveB]
+chainModel.drives = [chainDriveB]
+chainModel.selectOutputFolder(chainValidFolder)
+let chainFactoryBeforeRecover = chainFactoryCalls
+chainModel.recoverSelected()
+var chainRefused = false
+for _ in 0..<100 {
+    if case .failed = chainModel.state {
+        chainRefused = true
+        break
+    }
+    if chainModel.state != .recovering {
+        break
+    }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(chainRefused, "recoverSelected отказал при несовпадении с источником скана")
+check(chainModel.state == .failed(UserFacingFailure.make(from: DeletedFilesError.sourceChanged)),
+      "отказ защиты recoverSelected даёт карточку sourceChanged")
+check(chainModel.candidates.isEmpty && chainModel.scannedSourceIdentity == nil,
+      "чужие находки и идентичность очищены")
+check(chainModel.canRecover == false, "после отказа защиты восстановление недоступно")
+let chainFactoryAfterRecover = chainFactoryCalls
+_ = try chainSessions.recovery(for: chainDriveA)
+check(chainFactoryCalls == chainFactoryAfterRecover + 1,
+      "сессия сброшена после отказа защиты recoverSelected")
+
 print("PASS: \(checkCount) domain checks")
 
 print("PASS: \(checkCount) domain checks")
