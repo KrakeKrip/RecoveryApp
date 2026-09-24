@@ -11,7 +11,7 @@
 | TASK-004B | DONE | `codex/task-004b-empty-results` | Диагностика пустых/неполных результатов и точный текст отмены поиска |
 | TASK-004C | DONE | `glm/task-004c-size-aware-quick-recovery` | Сверять ожидаемый и фактический размер quick-результатов; принят коммит `d141e57ff5020119fe0d8c3ac7bf57faa198afd6` |
 | TASK-005 | DONE | `glm/task-005-cli-photorec` | CLI глубокого PhotoRec с прогрессом и отменой; принят коммит `118efde68c89ef6d7f6eead8d2ca0282feefee5f` |
-| TASK-006 | TODO | — | CLI восстановления видео |
+| TASK-006 | IN PROGRESS | `glm/task-006-cli-video-repair` | Общий RecoveryCore для untrunc и CLI восстановления видео с отменой |
 | TASK-007 | TODO | — | Перевод SwiftUI на общий RecoveryCore |
 | TASK-008 | TODO | — | Полная регрессия и актуальная упаковка 0.8.1 |
 
