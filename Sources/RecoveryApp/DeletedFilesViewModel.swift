@@ -405,8 +405,8 @@ final class DeletedFilesViewModel: ObservableObject {
         }
     }
 
-    /// Фиксация идентичности источника после успешного сканирования
-    /// подтверждённого диска; доступно доменным тестам для имитации скана.
+    /// Фиксация идентичности подтверждённого диска перед запуском сканирования;
+    /// доступно доменным тестам для имитации скана.
     func recordScannedSource(_ drive: ExternalDrive) {
         scannedSourceIdentity = PhysicalSourceIdentity(drive)
     }
