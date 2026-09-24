@@ -83,7 +83,9 @@ struct UserFacingFailure: Equatable {
         case .resultOnSourceVolume:
             UserFacingFailure(title: "Нужен другой диск", message: error.localizedDescription)
         case .volumeIdentityUnknown:
-            UserFacingFailure(title: "Носитель не определён", message: "Не удалось надёжно определить носитель результата. Для безопасности выберите папку на другом диске и повторите попытку.")
+            UserFacingFailure(title: "Носитель не определён", message: "Не удалось надёжно определить физический носитель результата. Для безопасности выберите папку на другом диске и повторите попытку.")
+        case .resultNamingFailed, .resultNamingExhausted:
+            UserFacingFailure(title: "Не удалось сохранить результат", message: error.localizedDescription)
         case .toolMissing:
             UserFacingFailure(
                 title: "Компонент приложения повреждён",

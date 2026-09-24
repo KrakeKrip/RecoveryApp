@@ -11,10 +11,12 @@ public enum VideoRepairError: LocalizedError {
     case outputFolderMissing
     case outputFolderNotWritable
     case outputFolderIsFile
-    /// Результат оказался на том же физическом томе, где лежит исходное видео.
+    /// Результат оказался на том же физическом носителе, где лежит исходное
+    /// видео (том образа на том же диске тоже считается этим носителем).
     case resultOnSourceVolume
-    /// Том результата или источника не удалось надёжно определить: операция
-    /// отказывает ради безопасности вместо записи в неизвестное место.
+    /// Физический носитель результата или источника не удалось надёжно
+    /// определить: операция отказывает ради безопасности вместо записи в
+    /// неизвестное место.
     case volumeIdentityUnknown
     case toolMissing
     case launchFailed(String)
@@ -22,6 +24,11 @@ public enum VideoRepairError: LocalizedError {
     case outputSpaceExhausted
     case cancelled
     case resultMissing
+    /// Резервирование имени результата не удалось (ошибка файловой системы,
+    /// а не занятое имя).
+    case resultNamingFailed(String)
+    /// Все 10 000 кандидатов имени результата заняты.
+    case resultNamingExhausted
 
     public var errorDescription: String? {
         switch self {
@@ -33,37 +40,241 @@ public enum VideoRepairError: LocalizedError {
         case .outputFolderNotWritable: "Нет доступа для записи в папку результата."
         case .outputFolderIsFile: "Путь результата указывает на файл. Выберите отдельную папку."
         case .resultOnSourceVolume: "Результат нельзя сохранять на том же носителе, где лежат исходные видео. Выберите папку на другом диске."
-        case .volumeIdentityUnknown: "Не удалось надёжно определить носитель результата. Для безопасности выберите папку на другом диске и повторите попытку."
+        case .volumeIdentityUnknown: "Не удалось надёжно определить физический носитель результата. Для безопасности выберите папку на другом диске и повторите попытку."
         case .toolMissing: "Встроенный инструмент untrunc отсутствует или повреждён."
         case .launchFailed(let message): "Не удалось запустить untrunc: \(message)"
         case .toolFailed(let code): "untrunc завершился с кодом \(code). Откройте подробный лог."
         case .outputSpaceExhausted: "В папке результата закончилось свободное место."
         case .cancelled: "Операция остановлена. Доступные результаты сохранены."
-        case .resultMissing: "untrunc завершился без ошибки, но файл результата не найден."
+        case .resultMissing: "untrunc завершился без ошибки, но файл результата не найден или пуст."
+        case .resultNamingFailed(let detail): "Не удалось зарезервировать имя результата: \(detail)."
+        case .resultNamingExhausted: "В папке результата не нашлось свободного имени: проверено 10 000 вариантов."
         }
     }
 }
 
-/// Поставщик идентификатора физического тома для пути (обычно `st_dev`).
-/// Возвращает `nil`, когда том надёжно определить нельзя — валидация в этом
-/// случае отказывает операцию. Переопределяется только в доменных тестах;
-/// производственные CLI и GUI всегда используют системную реализацию.
-public typealias VideoVolumeDeviceProvider = @Sendable (URL) -> UInt64?
+/// Идентичность физического носителя: множество терминальных физических
+/// устройств (например, `disk0` для встроенного накопителя), к которым в
+/// итоге сводится хранение данных. Носитель файла-образа — это носитель
+/// самого файла, RAM-диск (`ram://`) — отдельный носитель «память».
+public struct VideoPhysicalMedium: Sendable, Equatable {
+    public let identifiers: Set<String>
 
-/// Системный источник идентификатора тома: `st_dev` по разрешённому пути.
-public func systemVolumeDevice(for url: URL) -> UInt64? {
-    var status = stat()
-    guard stat(url.resolvingSymlinksInPath().standardizedFileURL.path, &status) == 0 else {
-        return nil
+    public init(identifiers: Set<String>) {
+        self.identifiers = identifiers
     }
-    return UInt64(status.st_dev)
+
+    /// Носители считаются общими, если хотя бы один терминальный физический
+    /// идентификатор совпадает.
+    public func overlaps(_ other: VideoPhysicalMedium) -> Bool {
+        !identifiers.isDisjoint(with: other.identifiers)
+    }
 }
+
+/// Поставщик физического носителя для пути. Возвращает `nil`, когда носитель
+/// надёжно определить нельзя — валидация в этом случае отказывает операцию.
+/// Переопределяется только в доменных тестах; производственные CLI и GUI
+/// всегда используют системную реализацию (`systemMediumResolver`).
+public typealias VideoMediumProvider = @Sendable (URL) -> VideoPhysicalMedium?
 
 /// Фактическая идентичность файла: физический том и инод. Совпадение
 /// означает, что входы — один и тот же файл даже через разные имена.
 private struct VideoFileIdentity: Equatable {
     let device: UInt64
     let inode: UInt64
+}
+
+/// Системное определение физического носителя: по `statfs` получает устройство
+/// тома, затем через `diskutil info` поднимается по цепочке бэкенда
+/// (APFS-контейнер → физический store → целое устройство), а для
+/// подключённых образов рекурсивно определяет носитель файла-образа через
+/// `hdiutil info`. RAM-диск (`ram://`) — отдельный носитель «память».
+/// Неопределимый носитель даёт `nil` — валидация отказывает операцию.
+public final class SystemPhysicalMediumResolver: @unchecked Sendable {
+    private let lock = NSLock()
+    private var deviceCache: [String: Set<String>?] = [:]
+    private var volumeCache: [String: VideoPhysicalMedium?] = [:]
+    private var imageMap: [String: String]?
+
+    public init() {}
+
+    /// Единый resolver для одной валидации: кэширует ответы diskutil/hdiutil.
+    public static func makeProvider() -> VideoMediumProvider {
+        let resolver = SystemPhysicalMediumResolver()
+        return { url in resolver.medium(for: url) }
+    }
+
+    public func medium(for path: URL) -> VideoPhysicalMedium? {
+        lock.lock()
+        let resolved = path.resolvingSymlinksInPath().standardizedFileURL
+        if let cached = volumeCache[resolved.path] {
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
+
+        let medium = mountSourceDevice(of: resolved).flatMap { mountFrom in
+            SystemPhysicalMediumResolver.baseDiskName(of: mountFrom).flatMap { base in
+                resolveDevice(base, depth: 0, visited: [])
+            }.map { VideoPhysicalMedium(identifiers: $0) }
+        }
+
+        lock.lock()
+        volumeCache[resolved.path] = medium
+        lock.unlock()
+        return medium
+    }
+
+    /// Разрешает целое устройство в множество терминальных физических
+    /// идентификаторов; `nil` — носитель надёжно определить не удалось.
+    private func resolveDevice(
+        _ baseDisk: String,
+        depth: Int,
+        visited: Set<String>
+    ) -> Set<String>? {
+        guard depth < 5, !visited.contains(baseDisk) else { return nil }
+        lock.lock()
+        if let cached = deviceCache[baseDisk] {
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
+
+        let resolved: Set<String>? = resolveUncachedDevice(baseDisk, depth: depth, visited: visited)
+
+        lock.lock()
+        deviceCache[baseDisk] = resolved
+        lock.unlock()
+        return resolved
+    }
+
+    private func resolveUncachedDevice(
+        _ baseDisk: String,
+        depth: Int,
+        visited: Set<String>
+    ) -> Set<String>? {
+        guard let info = SystemPhysicalMediumResolver.diskutilInfoPlist(baseDisk) else { return nil }
+        let storeNames = ((info["APFSPhysicalStores"] as? [[String: Any]]) ?? [])
+            .compactMap { ($0["APFSPhysicalStore"] as? String).flatMap(SystemPhysicalMediumResolver.baseDiskName) }
+        if !storeNames.isEmpty {
+            var terminals: Set<String> = []
+            var nextVisited = visited
+            nextVisited.insert(baseDisk)
+            for store in storeNames {
+                guard let terminal = resolveDevice(store, depth: depth + 1, visited: nextVisited) else {
+                    return nil
+                }
+                terminals.formUnion(terminal)
+            }
+            return terminals
+        }
+        switch info["VirtualOrPhysical"] as? String {
+        case "Physical", "Unknown":
+            // Терминальное физическое устройство (встроенный NVMe сообщает
+            // Unknown); ссылок на другой бэкенд у него нет.
+            return [baseDisk]
+        case "Virtual":
+            // Подключённый образ: носитель — носитель файла образа; RAM-диск
+            // (ram://) — память. Без записи в hdiutil info носитель неизвестен.
+            switch attachedImagePath(forDisk: baseDisk) {
+            case "ram":
+                return ["ram"]
+            case .some(let imagePath):
+                return medium(for: URL(fileURLWithPath: imagePath))?.identifiers
+            case nil:
+                return nil
+            }
+        default:
+            return nil
+        }
+    }
+
+    private func mountSourceDevice(of url: URL) -> String? {
+        var stats = statfs()
+        guard statfs(url.path, &stats) == 0 else { return nil }
+        return withUnsafePointer(to: &stats.f_mntfromname) {
+            $0.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) {
+                String(cString: $0)
+            }
+        }
+    }
+
+    /// `disk5s1` → `disk5`; устройства без слайса возвращаются как есть.
+    private static func baseDiskName(of device: String) -> String? {
+        let name = (device as NSString).lastPathComponent
+        guard name.hasPrefix("disk") else { return nil }
+        var digitsEnd = name.index(name.startIndex, offsetBy: 4)
+        while digitsEnd < name.endIndex, name[digitsEnd].isNumber {
+            digitsEnd = name.index(after: digitsEnd)
+        }
+        guard digitsEnd > name.index(name.startIndex, offsetBy: 4) else { return nil }
+        let remainder = name[digitsEnd...]
+        if remainder.isEmpty { return name }
+        guard remainder.hasPrefix("s"), remainder.dropFirst().allSatisfy(\.isNumber) else {
+            return nil
+        }
+        return String(name[..<digitsEnd])
+    }
+
+    private static func diskutilInfoPlist(_ device: String) -> [String: Any]? {
+        plistOutput(executable: "/usr/sbin/diskutil", arguments: ["info", "-plist", device])
+    }
+
+    /// Карта «целое устройство → путь файла образа» из `hdiutil info`.
+    /// `"ram"` — специальное значение для RAM-дисков (`ram://`).
+    private func attachedImagePath(forDisk baseDisk: String) -> String? {
+        lock.lock()
+        if let imageMap {
+            lock.unlock()
+            return imageMap[baseDisk]
+        }
+        lock.unlock()
+
+        var map: [String: String] = [:]
+        if let plist = SystemPhysicalMediumResolver.plistOutput(executable: "/usr/bin/hdiutil", arguments: ["info", "-plist"]),
+           let images = plist["images"] as? [[String: Any]] {
+            for image in images {
+                guard let imagePath = image["image-path"] as? String else { continue }
+                let entities = image["system-entities"] as? [[String: Any]] ?? []
+                for entity in entities {
+                    guard let devEntry = entity["dev-entry"] as? String,
+                          let base = SystemPhysicalMediumResolver.baseDiskName(of: devEntry) else { continue }
+                    map[base] = imagePath.hasPrefix("ram://") ? "ram" : imagePath
+                }
+            }
+        }
+
+        lock.lock()
+        if imageMap == nil {
+            imageMap = map
+        }
+        let cached = imageMap?[baseDisk]
+        lock.unlock()
+        return cached
+    }
+
+    private static func plistOutput(executable: String, arguments: [String]) -> [String: Any]? {
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        process.standardInput = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0,
+              let plist = try? PropertyListSerialization.propertyList(from: data, format: nil)
+        else {
+            return nil
+        }
+        return plist as? [String: Any]
+    }
 }
 
 public struct VideoRepairRequest: Sendable {
@@ -80,13 +291,14 @@ public struct VideoRepairRequest: Sendable {
     /// Preflight до запуска untrunc: входы существуют, являются обычными
     /// читаемыми файлами и не указывают на один и тот же файл (включая
     /// symlink и жёсткие ссылки); папка результата существует, доступна для
-    /// записи, не является файлом и находится на другом томе, чем исходные
-    /// видео. Неизвестный том — безопасный отказ.
+    /// записи, не является файлом и находится на другом ФИЗИЧЕСКОМ носителе,
+    /// чем исходные видео (том образа на том же диске — тот же носитель).
+    /// Неопределимый носитель — безопасный отказ.
     public func validate(
         fileManager: FileManager = .default,
-        volumeDevice: VideoVolumeDeviceProvider? = nil
+        medium: VideoMediumProvider? = nil
     ) throws {
-        let deviceProvider = volumeDevice ?? systemVolumeDevice(for:)
+        let mediumProvider = medium ?? SystemPhysicalMediumResolver.makeProvider()
         let referenceIdentity = Self.fileIdentity(of: referenceURL, fileManager: fileManager)
         let damagedIdentity = Self.fileIdentity(of: damagedURL, fileManager: fileManager)
         let samePath = referenceURL.resolvingSymlinksInPath().standardizedFileURL.path
@@ -107,12 +319,13 @@ public struct VideoRepairRequest: Sendable {
             throw VideoRepairError.outputFolderNotWritable
         }
 
-        guard let referenceDevice = deviceProvider(referenceURL),
-              let damagedDevice = deviceProvider(damagedURL),
-              let outputDevice = deviceProvider(outputFolderURL) else {
+        guard let referenceMedium = mediumProvider(referenceURL),
+              let damagedMedium = mediumProvider(damagedURL),
+              let outputMedium = mediumProvider(outputFolderURL) else {
             throw VideoRepairError.volumeIdentityUnknown
         }
-        guard outputDevice != referenceDevice, outputDevice != damagedDevice else {
+        guard !outputMedium.overlaps(referenceMedium),
+              !outputMedium.overlaps(damagedMedium) else {
             throw VideoRepairError.resultOnSourceVolume
         }
     }
@@ -138,29 +351,38 @@ public struct VideoRepairRequest: Sendable {
     /// гарантирует, что параллельный запуск получит другое имя, а чужие
     /// файлы не перезаписываются. Возвращает путь и дескриптор
     /// плейсхолдера (закройте его); untrunc заполняет файл содержимым.
-    public func reserveResultURL(fileManager: FileManager = .default) -> (url: URL, descriptor: Int32) {
+    /// Занятое имя пропускается; любая другая ошибка `open` и исчерпание
+    /// 10 000 кандидатов завершаются отказом — небезопасного запасного
+    /// пути без `O_EXCL` здесь нет.
+    public func reserveResultURL(fileManager: FileManager = .default) throws -> (url: URL, descriptor: Int32) {
         let stem = Self.resultStem(of: damagedURL)
         let ext = Self.resultExtension(of: damagedURL)
-        var names = ["\(stem)_recovered.\(ext)"]
+        var candidateNames = ["\(stem)_recovered.\(ext)"]
         var index = 2
-        while index < 10_000 {
-            names.append("\(stem)_recovered_\(index).\(ext)")
+        while candidateNames.count < Self.resultNameCandidateLimit {
+            candidateNames.append("\(stem)_recovered_\(index).\(ext)")
             index += 1
         }
-        for name in names {
+        for name in candidateNames {
             let candidate = outputFolderURL.appendingPathComponent(name)
             let descriptor = open(candidate.path, O_CREAT | O_EXCL | O_WRONLY, 0o644)
             if descriptor >= 0 {
                 return (candidate, descriptor)
             }
+            if errno == EEXIST {
+                // Имя занято другим файлом или параллельным запуском.
+                continue
+            }
+            let openErrno = errno
+            throw VideoRepairError.resultNamingFailed(String(cString: strerror(openErrno)))
         }
-        // Практически недостижимо: все 10 000 имён заняты. Резерв Магистра
-        // без O_EXCL нельзя считать безопасным, поэтому последнее имя
-        // резервируется обычным созданием — конфликте имён здесь уже нет.
-        let fallback = outputFolderURL.appendingPathComponent("\(stem)_recovered_10000.\(ext)")
-        let descriptor = open(fallback.path, O_CREAT | O_WRONLY, 0o644)
-        return (fallback, descriptor)
+        throw VideoRepairError.resultNamingExhausted
     }
+
+    /// Число кандидатов имени результата: `_recovered` плюс `_2`…`_10000`.
+    /// Исчерпание всех кандидатов — отказ операции, а не запись поверх чужого
+    /// файла.
+    public static let resultNameCandidateLimit = 10_000
 
     private static func resultStem(of damagedURL: URL) -> String {
         damagedURL.deletingPathExtension().lastPathComponent
@@ -277,7 +499,7 @@ public final class VideoRepairExecutor: @unchecked Sendable {
         onOutput: @escaping @MainActor @Sendable (String) -> Void,
         onValidated: @escaping @MainActor @Sendable (URL) -> Void
     ) throws -> URL {
-        let (outputURL, placeholderDescriptor) = request.reserveResultURL()
+        let (outputURL, placeholderDescriptor) = try request.reserveResultURL()
         close(placeholderDescriptor)
         notify(outputURL, onValidated)
 
@@ -349,6 +571,14 @@ public final class VideoRepairExecutor: @unchecked Sendable {
             throw VideoRepairError.toolFailed(launchedProcess.terminationStatus)
         }
         guard FileManager.default.fileExists(atPath: outputURL.path) else {
+            throw VideoRepairError.resultMissing
+        }
+        // Инструмент мог завершиться успешно, ни разу не записав данные:
+        // пустой плейсхолдер — не восстановленное видео, публиковать его
+        // нельзя.
+        let resultSize = ((try? FileManager.default.attributesOfItem(atPath: outputURL.path))?[.size] as? NSNumber)?.int64Value ?? 0
+        guard resultSize > 0 else {
+            Self.removeReservedResult(at: outputURL)
             throw VideoRepairError.resultMissing
         }
         lock.lock()

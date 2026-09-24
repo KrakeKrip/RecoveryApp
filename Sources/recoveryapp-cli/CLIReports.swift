@@ -321,6 +321,8 @@ func videoErrorCode(for error: Error) -> String {
     case .outputFolderIsFile: "outputFolderIsFile"
     case .resultOnSourceVolume: "resultOnSourceVolume"
     case .volumeIdentityUnknown: "volumeIdentityUnknown"
+    case .resultNamingFailed: "resultNamingFailed"
+    case .resultNamingExhausted: "resultNamingExhausted"
     case .toolMissing: "toolMissing"
     case .launchFailed: "launchFailed"
     case .toolFailed: "toolFailed"

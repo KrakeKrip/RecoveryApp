@@ -32,14 +32,15 @@ let request = VideoRepairRequest(
     damagedURL: damaged,
     outputFolderURL: root
 )
-// Политика томов: результат и исходники на одном томе теперь отклоняются,
-// поэтому валидация здесь использует внедряемого поставщика с разными
-// томами (в production всегда применяется системный st_dev).
-try request.validate(volumeDevice: { url in
+// Политика физического носителя: результат и исходники на одном носителе
+// теперь отклоняются, поэтому валидация здесь использует внедряемого
+// поставщика с разными носителями (в production всегда применяется
+// системный resolver).
+try request.validate(medium: { url in
     var isDirectory: ObjCBool = false
     let isOutputFolder = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
         && isDirectory.boolValue
-    return isOutputFolder ? 2 : 1
+    return VideoPhysicalMedium(identifiers: isOutputFolder ? ["out-medium"] : ["src-medium"])
 })
 check(request.resultURL().lastPathComponent == "clip_recovered_2.mp4", "результат не перезаписывается")
 
@@ -846,15 +847,15 @@ while goneWaited < 150, !noProcess(named: "deep-cancel-shim-running") {
 check(noProcess(named: "deep-cancel-shim-running"),
       "после отмены нет живого дочернего процесса")
 
-// TASK-006: видео — preflight, том-политика, конкуренция имён, JSONL.
+// TASK-006: видео — preflight, физический носитель, конкуренция имён, JSONL.
 private func expectVideoError(
     _ request: VideoRepairRequest,
     _ expectedCase: VideoRepairError,
     _ message: String,
-    volumeDevice: VideoVolumeDeviceProvider? = nil
+    medium: VideoMediumProvider? = nil
 ) {
     do {
-        try request.validate(volumeDevice: volumeDevice)
+        try request.validate(medium: medium)
         check(false, message)
     } catch let error as VideoRepairError {
         // Сравнение по варианту случая: ассоциированные значения не важны.
@@ -868,6 +869,8 @@ private func expectVideoError(
              (.outputFolderIsFile, .outputFolderIsFile),
              (.resultOnSourceVolume, .resultOnSourceVolume),
              (.volumeIdentityUnknown, .volumeIdentityUnknown),
+             (.resultNamingFailed, .resultNamingFailed),
+             (.resultNamingExhausted, .resultNamingExhausted),
              (.toolMissing, .toolMissing),
              (.launchFailed, .launchFailed),
              (.toolFailed, .toolFailed),
@@ -964,27 +967,75 @@ expectVideoError(
 )
 try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: readOnlyVideoDir.path)
 
-// Политика томов: seam внедряется только в доменных тестах, production
-// использует системный st_dev; отключить защиту он не позволяет.
+// Политика физического носителя: seam внедряется только в доменных тестах,
+// production использует системный resolver (цепочка diskutil/hdiutil);
+// отключить защиту он не позволяет.
 expectVideoError(
     healthyVideoRequest,
     .volumeIdentityUnknown,
-    "неопределимый том результата даёт безопасный отказ",
-    volumeDevice: { _ in nil }
+    "неопределимый носитель результата даёт безопасный отказ",
+    medium: { _ in nil }
 )
 expectVideoError(
     healthyVideoRequest,
     .resultOnSourceVolume,
-    "результат на томе исходного видео отклоняется",
-    volumeDevice: { _ in 4242 }
+    "результат на носителе исходного видео отклоняется",
+    medium: { _ in VideoPhysicalMedium(identifiers: ["shared-medium"]) }
 )
 do {
-    try healthyVideoRequest.validate(volumeDevice: { url in
-        url.path.contains("out") ? 1001 : 1002
+    try healthyVideoRequest.validate(medium: { url in
+        var isDirectory: ObjCBool = false
+        let isOutputFolder = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+            && isDirectory.boolValue
+        return VideoPhysicalMedium(
+            identifiers: isOutputFolder ? ["out-medium"] : ["src-medium"]
+        )
     })
-    check(true, "результат на другом томе проходит валидацию")
+    check(true, "результат на другом носителе проходит валидацию")
 } catch {
-    check(false, "результат на другом томе проходит валидацию: \(error)")
+    check(false, "результат на другом носителе проходит валидацию: \(error)")
+}
+
+// Системный resolver: реальный путь внутри Data-тома сводится к физическому
+// диску (идентификатор вида diskN), а не к st_dev тома.
+let systemMediumResolver = SystemPhysicalMediumResolver.makeProvider()
+let resolvedMedium = systemMediumResolver(damagedFile)
+check(resolvedMedium != nil, "системный resolver определяет носитель реального пути")
+check(resolvedMedium?.identifiers.contains(where: { $0.hasPrefix("disk") }) == true,
+      "системный resolver возвращает идентификатор физического диска: \(resolvedMedium?.identifiers ?? [])")
+
+// Исчерпание имён результата: все 10 000 кандидатов заняты — отказ, а не
+// запись поверх чужого файла.
+let exhaustedDir = videoRoot.appendingPathComponent("exhausted", isDirectory: true)
+try FileManager.default.createDirectory(at: exhaustedDir, withIntermediateDirectories: true)
+let exhaustedRequest = VideoRepairRequest(
+    referenceURL: referenceFile,
+    damagedURL: damagedFile,
+    outputFolderURL: exhaustedDir
+)
+_ = FileManager.default.createFile(
+    atPath: exhaustedDir.appendingPathComponent("damaged_recovered.mp4").path,
+    contents: nil
+)
+var exhaustedIndex = 2
+while exhaustedIndex <= VideoRepairRequest.resultNameCandidateLimit {
+    _ = FileManager.default.createFile(
+        atPath: exhaustedDir.appendingPathComponent("damaged_recovered_\(exhaustedIndex).mp4").path,
+        contents: nil
+    )
+    exhaustedIndex += 1
+}
+do {
+    _ = try exhaustedRequest.reserveResultURL()
+    check(false, "исчерпание имён результата даёт отказ")
+} catch let error as VideoRepairError {
+    var isExhausted = false
+    if case .resultNamingExhausted = error {
+        isExhausted = true
+    }
+    check(isExhausted, "исчерпание имён даёт resultNamingExhausted, получено \(error)")
+} catch {
+    check(false, "исчерпание имён результата даёт отказ")
 }
 
 // Конкурентное резервирование имён: параллельные запуски получают разные
@@ -994,23 +1045,22 @@ let namingRequest = VideoRepairRequest(
     damagedURL: damagedFile,
     outputFolderURL: videoOutput
 )
-let reservedNames = await withTaskGroup(of: String.self) { group in
+let reservedNames = try await withThrowingTaskGroup(of: String.self) { group in
     for _ in 0..<2 {
         group.addTask { @Sendable in
-            let (url, descriptor) = namingRequest.reserveResultURL()
+            let (url, descriptor) = try namingRequest.reserveResultURL()
             close(descriptor)
             return url.lastPathComponent
         }
     }
     var names: [String] = []
-    for await name in group {
+    for try await name in group {
         names.append(name)
     }
     return names
 }
-check(reservedNames.count == 2 && Set(reservedNames).count == 2,
-      "параллельное резервирование даёт разные имена: \(reservedNames)")
-let thirdReserved = namingRequest.reserveResultURL()
+check(reservedNames.count == 2 && Set(reservedNames).count == 2,      "параллельное резервирование даёт разные имена: \(reservedNames)")
+let thirdReserved = try namingRequest.reserveResultURL()
 close(thirdReserved.descriptor)
 check(!reservedNames.contains(thirdReserved.url.lastPathComponent),
       "третье резервирование снова выбирает уникальное имя")
@@ -1047,5 +1097,8 @@ check(parseJSONObject(encodeJSON(VideoErrorEvent(code: "resultOnSourceVolume", m
       "video error содержит стабильный код")
 check(videoErrorCode(for: VideoRepairError.volumeIdentityUnknown) == "volumeIdentityUnknown",
       "videoErrorCode отображает случай неизвестного тома")
+check(videoErrorCode(for: VideoRepairError.resultNamingFailed("нет места")) == "resultNamingFailed"
+      && videoErrorCode(for: VideoRepairError.resultNamingExhausted) == "resultNamingExhausted",
+      "videoErrorCode отображает новые случаи резервирования")
 
 print("PASS: \(checkCount) domain checks")

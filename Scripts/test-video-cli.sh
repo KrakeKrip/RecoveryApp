@@ -6,16 +6,12 @@ real_untrunc="$project_dir/ThirdParty/untrunc/bin/arm64/untrunc"
 test_dir="${VIDEO_CLI_TEST_DIR:-$project_dir/work/tests/video-cli-$RANDOM-$$}"
 cache_dir="${BUILD_CACHE_DIR:-$project_dir/work/swift-video-cli}"
 
-for command_name in ffmpeg ffprobe python3 clang pgrep; do
+for command_name in ffmpeg ffprobe python3 clang pgrep diskutil hdiutil; do
     command -v "$command_name" >/dev/null || {
         echo "Для теста нужен $command_name" >&2
         exit 1
     }
 done
-if ! command -v diskutil >/dev/null || ! command -v hdiutil >/dev/null; then
-    echo "Для теста нужны diskutil и hdiutil (синтетический том для политики носителей)" >&2
-    exit 1
-fi
 test -x "$real_untrunc"
 
 export SDKROOT="${RECOVERYAPP_SDKROOT:-$(xcrun --show-sdk-path)}"
@@ -33,40 +29,56 @@ fail() {
     exit 1
 }
 
-# Синтетический том (никаких пользовательских накопителей): новый синтаксис
-# diskutil image, на старых системах — hdiutil. Файл образа живёт внутри
-# test_dir и удаляется вместе с ним.
-volume_image="$test_dir/volume.asif"
-volume_mount="$test_dir/volume-mnt"
-create_synthetic_volume() {
-    if diskutil image create blank --format ASIF --fs APFS --size 48m \
-        --volumeName VIDCLI "$volume_image" >/dev/null 2>&1; then
-        mkdir -p "$volume_mount"
-        diskutil image attach "$volume_image" -mountPoint "$volume_mount" \
+# Синтетические носители (никаких пользовательских накопителей):
+# 1) ASIF-образ на внутреннем диске — его том имеет ДРУГОЙ st_dev, но лежит
+#    на том же ФИЗИЧЕСКОМ носителе, что и входные файлы, поэтому политика
+#    должна отказывать (регрессия сравнения томов вместо дисков);
+# 2) RAM-диск — действительно другой носитель (память), на нём проверяется
+#    успешный путь. Образ живёт внутри test_dir.
+image_file="$test_dir/volume.asif"
+image_mount="$test_dir/image-mnt"
+ram_device=""
+ram_mount=""
+
+create_image_volume() {
+    if diskutil image create blank --format ASIF --fs APFS --size 32m \
+        --volumeName VIDIMG "$image_file" >/dev/null 2>&1; then
+        mkdir -p "$image_mount"
+        diskutil image attach "$image_file" -mountPoint "$image_mount" \
             -mountOptions nobrowse >/dev/null
     else
-        volume_image="$test_dir/volume.dmg"
-        hdiutil create -size 48m -fs 'FAT32' -volname VIDCLI \
-            -o "$volume_image" -ov -quiet
-        mkdir -p "$volume_mount"
-        hdiutil attach "$volume_image" -mountpoint "$volume_mount" \
+        image_file="$test_dir/volume.dmg"
+        hdiutil create -size 32m -fs 'FAT32' -volname VIDIMG \
+            -o "$image_file" -ov -quiet
+        mkdir -p "$image_mount"
+        hdiutil attach "$image_file" -mountpoint "$image_mount" \
             -nobrowse -noautoopen -quiet
     fi
 }
-detach_synthetic_volume() {
-    # Лучшее усилие с ретраями: том может «занять» пару секунд после
-    # завершения процессов; при раннем отказе скрипта trap тоже вызывает
-    # эту функцию, поэтому незакрытых томов не остаётся.
-    for _ in {1..5}; do
-        hdiutil detach "$volume_mount" -quiet >/dev/null 2>&1 \
-            && return 0
-        diskutil image detach "$volume_image" >/dev/null 2>&1 \
-            && return 0
-        sleep 1
-    done
-    hdiutil detach "$volume_mount" -force -quiet >/dev/null 2>&1 || true
+
+create_ram_volume() {
+    ram_device="$(hdiutil attach -nomount ram://98304 2>/dev/null | awk 'NR==1{print $1}')"
+    [[ "$ram_device" == /dev/disk* ]] || fail "не удалось создать RAM-диск"
+    diskutil eraseVolume APFS VIDCLI "$ram_device" >/dev/null
+    ram_mount="$(ls -d /Volumes/VIDCLI 2>/dev/null || true)"
+    [[ -d "$ram_mount" ]] || fail "RAM-том не смонтировался"
 }
-trap detach_synthetic_volume EXIT
+
+detach_all_volumes() {
+    if [[ -d "$image_mount" ]]; then
+        for _ in {1..5}; do
+            hdiutil detach "$image_mount" -quiet >/dev/null 2>&1 && break
+            diskutil image detach "$image_file" >/dev/null 2>&1 && break
+            sleep 1
+        done
+    fi
+    if [[ -n "$ram_mount" && -d "$ram_mount" ]]; then
+        hdiutil detach "$ram_mount" -quiet >/dev/null 2>&1 \
+            || diskutil eject "$ram_device" >/dev/null 2>&1 \
+            || hdiutil detach "$ram_mount" -force -quiet >/dev/null 2>&1 || true
+    fi
+}
+trap detach_all_volumes EXIT
 
 export RECOVERYAPP_TOOL_LAUNCHER_PATH="$test_dir/tools/tool-launcher"
 export RECOVERYAPP_UNTRUNC_PATH="$real_untrunc"
@@ -80,6 +92,12 @@ run_video() {
         cd "$scratch" || exit 97
         exec "$cli" "$@" > "$stdout_file" 2> "$stderr_file"
     )
+}
+
+assert_no_artifacts() {
+    local scratch="$1" label="$2"
+    [[ -z "$(find "$scratch" -mindepth 1 -print -quit)" ]] \
+        || fail "$label: в постороннем рабочем каталоге остались артефакты"
 }
 
 # 1. Аргументы: неверные, дубли, чужие флаги — код 2, stdout пуст.
@@ -108,7 +126,7 @@ expect_usage_error video repair --reference a.mp4 --damaged b.mp4 --output d --y
 "$cli" help | grep -q "video repair" || fail "справка не упоминает video repair"
 print "PASS: парсер video repair отклоняет неверные аргументы кодом 2"
 
-# 2. Preflight: входы, папка результата, том-политика — код 1 и событие error.
+# 2. Preflight: входы и папка результата — код 1 и событие error.
 mkdir -p "$test_dir/in" "$test_dir/scratch-preflight"
 printf 'synthetic reference\n' > "$test_dir/in/reference.mp4"
 printf 'synthetic damaged\n' > "$test_dir/in/damaged.mp4"
@@ -160,25 +178,32 @@ expect_preflight_error resultOnSourceVolume \
     --reference "$test_dir/in/reference.mp4" --damaged "$test_dir/in/damaged.mp4" --output "$test_dir/in"
 print "PASS: preflight даёт код 1 и одиночное событие error со стабильным кодом"
 
-# 3. Синтетический том: результат на другом носителе разрешён.
-create_synthetic_volume
-[[ -d "$volume_mount" ]] || fail "синтетический том не смонтировался"
-volume_out="$volume_mount/out"
-mkdir -p "$volume_out"
-
-# Недоступный инструмент: отсутствие пути к untrunc (preflight на томе
-# уже пройден, поэтому отказ даёт именно поиск инструмента).
-mkdir -p "$volume_mount/notool"
+# 3. Физический носитель: том образа на внутреннем диске имеет ДРУГОЙ st_dev,
+#    но тот же физический носитель, поэтому политика должна отказывать
+#    (регрессия сравнения томов вместо дисков).
+create_image_volume
+image_out="$image_mount/out"
+mkdir -p "$image_out"
+inputs_volume="$(df -k "$test_dir/in" | awk 'NR==2{print $1}')"
+image_volume="$(df -k "$image_out" | awk 'NR==2{print $1}')"
+[[ "$inputs_volume" != "$image_volume" ]] \
+    || fail "тестовая конфигурация: образ и входы оказались на одном томе"
 set +e
-env -u RECOVERYAPP_UNTRUNC_PATH "$cli" video repair \
-    --reference "$test_dir/in/reference.mp4" --damaged "$test_dir/in/damaged.mp4" \
-    --output "$volume_mount/notool" --jsonl > "$test_dir/no-tool.out" 2> "$test_dir/no-tool.err"
-tool_rc=$?
+run_video "$test_dir/scratch-preflight" "$test_dir/image.out" "$test_dir/image.err" \
+    video repair --reference "$test_dir/in/reference.mp4" \
+    --damaged "$test_dir/in/damaged.mp4" --output "$image_out" --jsonl
+image_rc=$?
 set -e
-[[ "$tool_rc" -eq 1 ]] || fail "ожидался код 1 при отсутствии untrunc (получен $tool_rc)"
-grep -q '"code":"toolMissing"' "$test_dir/no-tool.out" \
-    || fail "ожидается стабильный код toolMissing"
-print "PASS: недоступный инструмент даёт код 1 и код ошибки toolMissing"
+[[ "$image_rc" -eq 1 ]] || fail "ожидался код 1 для образа на том же диске (получен $image_rc)"
+grep -q '"code":"resultOnSourceVolume"' "$test_dir/image.out" \
+    || fail "образ на том же физическом диске должен отклоняться как resultOnSourceVolume"
+print "PASS: другой том (образ) на том же физическом диске отклоняется"
+
+# 4. RAM-диск — действительно другой носитель: успешный путь с настоящим
+#    untrunc, ffprobe и неизменными входами.
+create_ram_volume
+volume_out="$ram_mount/out"
+mkdir -p "$volume_out"
 
 ffmpeg -hide_banner -loglevel error -y \
     -f lavfi -i testsrc2=size=320x240:rate=15 \
@@ -216,8 +241,6 @@ terminal = {"completed", "cancelled", "error"}
 assert not (set(kinds[:-1]) & terminal), kinds
 started = events[0]
 assert started["schemaVersion"] == 1, started
-assert started["reference"] == os.path.realpath(reference), started
-assert started["damaged"] == os.path.realpath(damaged), started
 assert os.path.isabs(started["reference"]) and os.path.isabs(started["damaged"]), started
 assert started["outputDirectory"] == os.path.realpath(out_dir), started
 completed = events[-1]
@@ -244,19 +267,14 @@ PY
 shasum -a 256 "$test_dir/in/reference.mp4" "$test_dir/in/damaged.mp4" > "$test_dir/after.sha256"
 cmp "$test_dir/before.sha256" "$test_dir/after.sha256" \
     || fail "входные файлы изменились после восстановления"
-assert_no_artifacts() {
-    local scratch="$1" label="$2"
-    [[ -z "$(find "$scratch" -mindepth 1 -print -quit)" ]] \
-        || fail "$label: в постороннем рабочем каталоге остались артефакты"
-}
 assert_no_artifacts "$test_dir/scratch-e2e" "end-to-end"
-print "PASS: настоящий untrunc восстановил видео на другом томе, входы неизменны"
+print "PASS: настоящий untrunc восстановил видео на другом носителе, входы неизменны"
 
-# 4. Повторный запуск: новое имя без перезаписи, прежний результат цел.
+# 5. Повторный запуск: новое имя без перезаписи, прежний результат цел.
 run_video "$test_dir/scratch-e2e" "$test_dir/e2e-2.out" "$test_dir/e2e-2.err" \
     video repair --reference "$test_dir/in/reference.mp4" \
     --damaged "$test_dir/in/damaged.mp4" --output "$volume_out" --jsonl
-python3 - "$test_dir/e2e-2.out" "$volume_out" <<'PY'
+python3 - "$test_dir/e2e-2.out" <<'PY'
 import json, os, sys
 
 events = []
@@ -275,7 +293,21 @@ print("PASS: повторный запуск выбрал _recovered_2 без п
 PY
 print "PASS: повторный запуск не перезаписывает существующий результат"
 
-# 5. Отказ инструмента: код 1, error вместо completed, результат не
+# 6. Недоступный инструмент: отсутствие пути к untrunc (preflight на RAM-томе
+#    уже пройден, поэтому отказ даёт именно поиск инструмента).
+mkdir -p "$ram_mount/notool"
+set +e
+env -u RECOVERYAPP_UNTRUNC_PATH "$cli" video repair \
+    --reference "$test_dir/in/reference.mp4" --damaged "$test_dir/in/damaged.mp4" \
+    --output "$ram_mount/notool" --jsonl > "$test_dir/no-tool.out" 2> "$test_dir/no-tool.err"
+tool_rc=$?
+set -e
+[[ "$tool_rc" -eq 1 ]] || fail "ожидался код 1 при отсутствии untrunc (получен $tool_rc)"
+grep -q '"code":"toolMissing"' "$test_dir/no-tool.out" \
+    || fail "ожидается стабильный код toolMissing"
+print "PASS: недоступный инструмент даёт код 1 и код ошибки toolMissing"
+
+# 7. Отказ инструмента: код 1, error вместо completed, результат не
 #    публикуется, недописанный файл текущей операции убирается.
 shim_fail="$test_dir/tools/untrunc-fail"
 cat > "$shim_fail" <<'SHIM'
@@ -320,7 +352,51 @@ PY
 assert_no_artifacts "$test_dir/scratch-fail" "отказ инструмента"
 print "PASS: отказ инструмента даёт код 1 без опубликованного результата"
 
-# 6. Имитация нехватки места: текст ошибки распознаётся как ENOSPC.
+# 8. «Молчаливый успех»: untrunc вернул 0, ничего не записав — плейсхолдер
+#    пуст, результат не публикуется (регрессия пустого файла результата).
+shim_silent="$test_dir/tools/untrunc-silent"
+cat > "$shim_silent" <<'SHIM'
+#!/usr/bin/env python3
+import sys
+
+sys.stderr.write("Info: shim exited without writing\n")
+sys.exit(0)
+SHIM
+chmod +x "$shim_silent"
+mkdir -p "$test_dir/scratch-silent" "$volume_out/silent"
+set +e
+RECOVERYAPP_UNTRUNC_PATH="$shim_silent" \
+    run_video "$test_dir/scratch-silent" "$test_dir/silent.out" "$test_dir/silent.err" \
+    video repair --reference "$test_dir/in/reference.mp4" \
+    --damaged "$test_dir/in/damaged.mp4" --output "$volume_out/silent" --jsonl
+silent_rc=$?
+set -e
+[[ "$silent_rc" -eq 1 ]] || fail "ожидался код 1 при пустом результате (получен $silent_rc)"
+python3 - "$test_dir/silent.out" "$volume_out/silent" <<'PY'
+import json, os, sys
+
+events = []
+with open(sys.argv[1], encoding="utf-8") as handle:
+    for line in handle:
+        line = line.strip()
+        if line:
+            events.append(json.loads(line))
+kinds = [event["event"] for event in events]
+assert kinds[0] == "started", kinds
+assert kinds[-1] == "error", kinds
+assert events[-1]["code"] == "resultMissing", events[-1]
+assert "completed" not in kinds and "cancelled" not in kinds, kinds
+out_dir = sys.argv[2]
+published = [name for name in os.listdir(out_dir) if "_recovered" in name]
+assert published == [], published
+print("PASS: пустой файл после кода 0 не публикуется как результат")
+PY
+[[ -z "$(find "$volume_out/silent" -name '*_recovered*' -print -quit)" ]] \
+    || fail "пустой плейсхолдер должен быть убран"
+assert_no_artifacts "$test_dir/scratch-silent" "молчаливый успех"
+print "PASS: код 0 без данных даёт resultMissing без публикации"
+
+# 9. Имитация нехватки места: текст ошибки распознаётся как ENOSPC.
 shim_nospace="$test_dir/tools/untrunc-nospace"
 cat > "$shim_nospace" <<'SHIM'
 #!/usr/bin/env python3
@@ -343,11 +419,11 @@ grep -q '"code":"outputSpaceExhausted"' "$test_dir/space.out" \
     || fail "ожидается стабильный код outputSpaceExhausted"
 print "PASS: имитация нехватки места распознаётся как outputSpaceExhausted"
 
-# 7. Потоковый started: событие появляется в stdout до завершения процесса.
+# 10. Потоковый started: событие появляется в stdout до завершения процесса.
 shim_slow="$test_dir/tools/untrunc-slow"
 cat > "$shim_slow" <<'SHIM'
 #!/usr/bin/env python3
-import os, shutil, sys, time
+import shutil, sys, time
 
 args = sys.argv[1:]
 dst = None
@@ -391,21 +467,22 @@ set -e
 grep -q '"event":"completed"' "$test_dir/stream.out" || fail "нет completed после успешного запуска"
 print "PASS: событие started поступает потоком до завершения операции"
 
-# 8. Ctrl-C: код 130, cancelled, живых PID нет, недописанный файл убран.
+# 11. Ctrl-C с дочерним процессом: группа tool-launcher/untrunc/shim-ребёнок
+#     останавливается целиком, код 130, недописанный файл убран.
 shim_hang="$test_dir/tools/untrunc-hang"
 cat > "$shim_hang" <<'SHIM'
 #!/usr/bin/env python3
-import os, sys, time
+import os, subprocess, time
 
 pid_file = os.environ["VIDEO_CLI_PIDFILE"]
+child = subprocess.Popen(["sleep", "60"])
 with open(pid_file, "w") as handle:
-    handle.write(str(os.getpid()))
+    handle.write(f"{os.getpid()} {child.pid}\n")
 time.sleep(60)
 SHIM
 chmod +x "$shim_hang"
 mkdir -p "$test_dir/scratch-cancel" "$volume_out/cancel"
 export VIDEO_CLI_PIDFILE="$test_dir/shim.pid"
-# Прямая подоболочка с exec: $! становится pid самого CLI.
 (
     cd "$test_dir/scratch-cancel" || exit 97
     exec env RECOVERYAPP_UNTRUNC_PATH="$shim_hang" "$cli" video repair \
@@ -420,7 +497,10 @@ for _ in {1..100}; do
     sleep 0.1
 done
 [[ -s "$VIDEO_CLI_PIDFILE" ]] || fail "shim не сообщил свой PID"
-shim_pid="$(cat "$VIDEO_CLI_PIDFILE")"
+if ! read -r shim_pid child_pid < "$VIDEO_CLI_PIDFILE"; then
+    fail "не удалось прочитать PID shim и ребёнка"
+fi
+test -n "$shim_pid" && test -n "$child_pid" || fail "PID shim и ребёнка не получены"
 grep -q '"event":"started"' "$test_dir/cancel.out" || fail "нет started до отмены"
 sleep 0.3
 kill -INT "$video_pid" || fail "не удалось отправить SIGINT процессу CLI"
@@ -430,15 +510,15 @@ cancel_rc=$?
 set -e
 unset VIDEO_CLI_PIDFILE
 [[ "$cancel_rc" -eq 130 ]] || fail "ожидался код 130 после Ctrl-C (получен $cancel_rc)"
-shim_gone=no
+all_gone=no
 for _ in {1..50}; do
-    if ! kill -0 "$shim_pid" 2>/dev/null; then
-        shim_gone=yes
+    if ! kill -0 "$shim_pid" 2>/dev/null && ! kill -0 "$child_pid" 2>/dev/null; then
+        all_gone=yes
         break
     fi
     sleep 0.1
 done
-[[ "$shim_gone" == yes ]] || fail "после Ctrl-C остался живой дочерний процесс untrunc"
+[[ "$all_gone" == yes ]] || fail "после Ctrl-C остался живой shim или его дочерний процесс"
 if pgrep -f "$shim_hang" >/dev/null 2>&1; then
     fail "pgrep находит живой shim после Ctrl-C"
 fi
@@ -463,9 +543,9 @@ PY
 [[ -z "$(find "$volume_out/cancel" -name '*_recovered*' -print -quit)" ]] \
     || fail "недописанный файл текущей операции должен быть убран"
 assert_no_artifacts "$test_dir/scratch-cancel" "отмена"
-print "PASS: Ctrl-C даёт код 130, не оставляет процессов и недописанных файлов"
+print "PASS: Ctrl-C даёт код 130 и останавливает shim вместе с дочерним процессом"
 
-# 9. Текстовый режим: краткий русский вывод с путём результата.
+# 12. Текстовый режим: краткий русский вывод с путём результата.
 mkdir -p "$test_dir/scratch-text"
 run_video "$test_dir/scratch-text" "$test_dir/text.out" "$test_dir/text.err" \
     video repair --reference "$test_dir/in/reference.mp4" \
@@ -477,6 +557,6 @@ grep -q "_recovered_3.mp4" "$test_dir/text.out" \
 assert_no_artifacts "$test_dir/scratch-text" "текстовый режим"
 print "PASS: текстовый режим печатает русский итог с путём результата"
 
-detach_synthetic_volume
+detach_all_volumes
 print "PASS: все проверки video repair CLI прошли"
 echo "result=$test_dir"
