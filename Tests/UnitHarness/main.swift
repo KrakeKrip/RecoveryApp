@@ -1101,4 +1101,209 @@ check(videoErrorCode(for: VideoRepairError.resultNamingFailed("нет места
       && videoErrorCode(for: VideoRepairError.resultNamingExhausted) == "resultNamingExhausted",
       "videoErrorCode отображает новые случаи резервирования")
 
+// TASK-007: порядок физической quick-операции GUI — повторная сверка
+// источника по свежему снимку, preflight папки до авторизации, сессия
+// создаётся только после успеха обеих проверок.
+nonisolated(unsafe) private var physicalFactoryCalls = 0
+
+/// Синтетический диск через публичный plist-парсер Core (прямые конструкторы
+/// ExternalDrive недоступны за пределами модуля).
+private func makeSyntheticDrive(
+    identifier: String,
+    name: String,
+    size: Int64,
+    mountPoint: String? = nil
+) throws -> ExternalDrive {
+    var partition: [String: Any] = [
+        "DeviceIdentifier": "\(identifier)s1",
+        "VolumeName": name
+    ]
+    if let mountPoint {
+        partition["MountPoint"] = mountPoint
+    }
+    let plist: [String: Any] = [
+        "AllDisksAndPartitions": [[
+            "DeviceIdentifier": identifier,
+            "Size": size as NSNumber,
+            "BusProtocol": "USB",
+            "Partitions": [partition]
+        ]]
+    ]
+    let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+    return try ExternalDriveParser.drives(from: data)[0]
+}
+
+let guiSelectedDrive = try makeSyntheticDrive(identifier: "disk7", name: "TEST USB", size: 128_000_000_000)
+let guiSessions = PhysicalQuickSessionCoordinator(makeRecovery: {
+    physicalFactoryCalls += 1
+    return PhysicalQuickRecovery(helper: URL(fileURLWithPath: "/nonexistent/helper"), launcher: nil)
+})
+let guiOutputFolder = root.appendingPathComponent("gui-out", isDirectory: true)
+try FileManager.default.createDirectory(at: guiOutputFolder, withIntermediateDirectories: true)
+
+private func expectPrepareFailure(
+    _ snapshot: [ExternalDrive],
+    _ drive: ExternalDrive,
+    _ expected: DeletedFilesError,
+    _ message: String,
+    outputFolderURL: URL = guiOutputFolder
+) {
+    let callsBefore = physicalFactoryCalls
+    do {
+        _ = try PhysicalQuickOperationPreparation.prepare(
+            selected: drive,
+            snapshot: snapshot,
+            outputFolderURL: outputFolderURL,
+            sessions: guiSessions
+        )
+        check(false, message)
+    } catch let error as DeletedFilesError {
+        var matched = false
+        if case expected = error { matched = true }
+        check(matched, "\(message): получено \(error)")
+        // Отказ сверки или preflight происходит ДО обращения к сессии:
+        // авторизация не создаётся.
+        check(physicalFactoryCalls == callsBefore,
+              "\(message): сессия не должна создаваться")
+    } catch {
+        check(false, message)
+    }
+}
+
+// Тот же источник в свежем снимке — операция готовится, сессия создаётся.
+let guiPhysicalDrives = [guiSelectedDrive]
+let callsBeforeConfirm = physicalFactoryCalls
+let preparedSession = try PhysicalQuickOperationPreparation.prepare(
+    selected: guiSelectedDrive,
+    snapshot: guiPhysicalDrives,
+    outputFolderURL: guiOutputFolder,
+    sessions: guiSessions
+)
+check(physicalFactoryCalls == callsBeforeConfirm + 1,
+      "успешная подготовка создаёт сессию (одну)")
+expectPrepareFailure(
+    [],
+    guiSelectedDrive,
+    .sourceUnavailable,
+    "исчезнувший diskN отказывает до сессии"
+)
+expectPrepareFailure(
+    [try makeSyntheticDrive(identifier: "disk7", name: "ДРУГОЕ ИМЯ", size: 128_000_000_000)],
+    guiSelectedDrive,
+    .sourceChanged,
+    "другое имя отказывает до сессии"
+)
+expectPrepareFailure(
+    [try makeSyntheticDrive(identifier: "disk7", name: "TEST USB", size: 64_000_000_000)],
+    guiSelectedDrive,
+    .sourceChanged,
+    "другой размер отказывает до сессии"
+)
+
+// Preflight папки до авторизации: папка на источнике отклоняется, в том
+// числе через symlink на точку монтирования источника.
+let guiMountRoot = root.appendingPathComponent("gui-mnt", isDirectory: true)
+let guiMountInner = guiMountRoot.appendingPathComponent("inner", isDirectory: true)
+try FileManager.default.createDirectory(at: guiMountInner, withIntermediateDirectories: true)
+let guiMountLink = root.appendingPathComponent("gui-mnt-link", isDirectory: true)
+try FileManager.default.createSymbolicLink(at: guiMountLink, withDestinationURL: guiMountInner)
+let guiMountedDrive = try makeSyntheticDrive(
+    identifier: "disk8",
+    name: "MOUNTED",
+    size: 64_000_000_000,
+    mountPoint: guiMountRoot.path
+)
+expectPrepareFailure(
+    [guiMountedDrive],
+    guiMountedDrive,
+    .outputOnSource,
+    "папка на источнике отказывает до сессии",
+    outputFolderURL: guiMountInner
+)
+expectPrepareFailure(
+    [guiMountedDrive],
+    guiMountedDrive,
+    .outputOnSource,
+    "папка на источнике через symlink отказывает до сессии",
+    outputFolderURL: guiMountLink
+)
+
+// Жизненный цикл одной физической quick-сессии на синтетической фабрике:
+// scan и recover одного источника переиспользуют её, смена диска и сброс
+// создают новую.
+let lifecycleCallsBefore = physicalFactoryCalls
+let firstSession = try guiSessions.recovery(for: guiSelectedDrive)
+check(firstSession === preparedSession,
+      "обращение после подготовки переиспользует ту же сессию")
+check(physicalFactoryCalls == lifecycleCallsBefore,
+      "переиспользование не создаёт новую сессию")
+let otherDrive = try makeSyntheticDrive(identifier: "disk9", name: "TEST USB", size: 128_000_000_000)
+let _ = try guiSessions.recovery(for: otherDrive)
+check(physicalFactoryCalls == lifecycleCallsBefore + 1, "другой источник получает новую сессию")
+guiSessions.reset()
+let afterReset = try guiSessions.recovery(for: guiSelectedDrive)
+check(afterReset !== firstSession, "после сброса создаётся новая сессия")
+check(physicalFactoryCalls == lifecycleCallsBefore + 2,
+      "после сброса фабрика вызывается заново")
+
+// TASK-007: сводки quick-извлечения для карточки результата.
+private func guiResult(_ status: RecoveredFileSizeStatus) -> RecoveredFileResult {
+    RecoveredFileResult(url: root.appendingPathComponent("f-\(status.rawValue)"), expectedSize: 10, actualSize: 10, status: status)
+}
+
+let summaryFolder = root.appendingPathComponent("summary-out", isDirectory: true)
+let emptySummary = QuickRecoverySummary.make(folder: summaryFolder, results: [])
+check(emptySummary.savedCount == 0 && emptySummary.title == "Восстанавливать нечего",
+      "пустой quick-результат — нормальное состояние без успеха «сохранено 0»")
+check(!emptySummary.message.contains("Сохранено файлов: 0"),
+      "пустой результат не сообщает успех «сохранено 0»")
+check(emptySummary.hasSizeProblems == false, "пустой результат не считается проблемным")
+let matchesSummary = QuickRecoverySummary.make(
+    folder: summaryFolder,
+    results: [guiResult(.sizeMatches), guiResult(.sizeMatches), guiResult(.expectedEmpty)]
+)
+check(matchesSummary.title == "Восстановление завершено" && !matchesSummary.hasSizeProblems,
+      "полное совпадение размеров — спокойный успех")
+check(matchesSummary.savedCount == 3 && matchesSummary.sizeMatchesCount == 3,
+      "совпавшие и достоверно пустые считаются сверенными")
+check(matchesSummary.message.contains("Совпадение размеров не является проверкой целостности содержимого."),
+      "успех не выдаёт совпадение размеров за проверку целостности")
+let incompleteSummary = QuickRecoverySummary.make(
+    folder: summaryFolder,
+    results: [guiResult(.sizeMatches), guiResult(.incomplete)]
+)
+check(incompleteSummary.hasSizeProblems && incompleteSummary.title == "Восстановление завершено с предупреждениями",
+      "неполные файлы дают предупреждающий заголовок")
+check(incompleteSummary.savedCount == 2,
+      "число сохранённых файлов не уменьшается из-за статуса")
+check(incompleteSummary.message.contains("извлечены не полностью: 1"),
+      "предупреждение называет число неполных файлов")
+let mismatchSummary = QuickRecoverySummary.make(folder: summaryFolder, results: [guiResult(.sizeMismatch)])
+check(mismatchSummary.hasSizeProblems && mismatchSummary.sizeMismatchCount == 1,
+      "несовпадение размеров считается проблемой")
+check(mismatchSummary.message.contains("размер отличается от метаданных: 1"),
+      "предупреждение называет число несовпадающих файлов")
+let unknownSummary = QuickRecoverySummary.make(folder: summaryFolder, results: [guiResult(.sizeUnknown)])
+check(!unknownSummary.hasSizeProblems && unknownSummary.title == "Восстановление завершено",
+      "неизвестный размер не превращает результат в проблемный")
+check(unknownSummary.message.contains("не удалось сверить"),
+      "неизвестный размер объяснён, а не скрыт")
+check(!unknownSummary.message.contains("полностью") || unknownSummary.message.contains("не доказывает"),
+      "неизвестный размер не выдаётся за доказанную полноту")
+let mixedSummary = QuickRecoverySummary.make(
+    folder: summaryFolder,
+    results: [
+        guiResult(.sizeMatches), guiResult(.incomplete), guiResult(.sizeMismatch),
+        guiResult(.sizeUnknown), guiResult(.sizeMatches)
+    ]
+)
+check(mixedSummary.savedCount == 5 && mixedSummary.sizeMatchesCount == 2
+      && mixedSummary.incompleteCount == 1 && mixedSummary.sizeMismatchCount == 1
+      && mixedSummary.sizeUnknownCount == 1,
+      "смешанный набор считается по каждому статусу")
+check(mixedSummary.message.contains("Совпадение размеров не является проверкой целостности содержимого."),
+      "смешанный результат напоминает про границы сверки размеров")
+
+print("PASS: \(checkCount) domain checks")
+
 print("PASS: \(checkCount) domain checks")

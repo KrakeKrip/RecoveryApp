@@ -13,7 +13,7 @@ final class DeletedFilesViewModel: ObservableObject {
         case scanFinished
         case recovering
         case deepRecovering
-        case succeeded(Int, URL)
+        case succeeded(QuickRecoverySummary)
         case deepSucceeded(Int, URL)
         case failed(UserFacingFailure)
         case cancelled(URL?)
@@ -70,13 +70,25 @@ final class DeletedFilesViewModel: ObservableObject {
         }
         let testCount = Int(environment["RECOVERYAPP_TEST_RESULT_COUNT"] ?? "") ?? 12
         if let path = environment["RECOVERYAPP_TEST_DELETED_SUCCESS"] {
-            state = .succeeded(testCount, URL(fileURLWithPath: path, isDirectory: true))
+            state = .succeeded(QuickRecoverySummary.make(
+                folder: URL(fileURLWithPath: path, isDirectory: true),
+                results: Array(repeating: RecoveredFileResult(
+                    url: URL(fileURLWithPath: path),
+                    expectedSize: 1,
+                    actualSize: 1,
+                    status: .sizeMatches
+                ), count: testCount)
+            ))
         } else if let path = environment["RECOVERYAPP_TEST_DEEP_SUCCESS"] {
             state = .deepSucceeded(testCount, URL(fileURLWithPath: path, isDirectory: true))
         } else if let path = environment["RECOVERYAPP_TEST_DELETED_CANCELLED"] {
             state = .cancelled(URL(fileURLWithPath: path, isDirectory: true))
         } else if environment["RECOVERYAPP_TEST_DELETED_FAILURE"] == "no-space" {
             state = .failed(UserFacingFailure.make(from: DeletedFilesError.outputSpaceExhausted))
+        } else if environment["RECOVERYAPP_TEST_DELETED_FAILURE"] == "source-changed" {
+            state = .failed(UserFacingFailure.make(from: DeletedFilesError.sourceChanged))
+        } else if environment["RECOVERYAPP_TEST_DELETED_FAILURE"] == "output-on-source" {
+            state = .failed(UserFacingFailure.make(from: DeletedFilesError.outputOnSource))
         }
     }
 
@@ -128,9 +140,13 @@ final class DeletedFilesViewModel: ObservableObject {
         selection = []
         state = .ready
         log = ""
+        executor.resetPhysicalSession()
     }
 
     func selectDrive(id: ExternalDrive.ID?) {
+        if id != selectedDriveID {
+            executor.resetPhysicalSession()
+        }
         selectedDriveID = id
         if id != nil { imageURL = nil }
         resetResults()
@@ -193,14 +209,10 @@ final class DeletedFilesViewModel: ObservableObject {
             do {
                 let found: [DeletedFileCandidate]
                 if let drive {
-                    let currentDrives = try await driveDiscovery.load()
-                    guard let currentDrive = currentDrives.first(where: { $0.id == drive.id }) else {
-                        throw DeletedFilesError.sourceUnavailable
-                    }
-                    guard currentDrive.size == drive.size, currentDrive.name == drive.name else {
-                        throw DeletedFilesError.sourceChanged
-                    }
-                    found = try await executor.scan(drive: currentDrive) { [weak self] text in
+                    // Повторное обнаружение и сверка до авторизации — правила
+                    // в PhysicalDriveSelector.selectDrive, без ручной копии.
+                    let confirmed = try await confirmPhysicalSource(drive)
+                    found = try await executor.scan(drive: confirmed) { [weak self] text in
                         self?.log.append(text)
                     }
                 } else if let imageURL {
@@ -236,36 +248,51 @@ final class DeletedFilesViewModel: ObservableObject {
         task = Task { [weak self] in
             guard let self else { return }
             do {
-                let urls: [URL]
+                let results: [RecoveredFileResult]
                 if let drive {
-                    let currentDrives = try await driveDiscovery.load()
-                    guard let currentDrive = currentDrives.first(where: { $0.id == drive.id }) else {
-                        throw DeletedFilesError.sourceUnavailable
-                    }
-                    guard currentDrive.size == drive.size, currentDrive.name == drive.name else {
-                        throw DeletedFilesError.sourceChanged
-                    }
-                    urls = try await executor.recover(
-                        drive: currentDrive,
+                    // Сверка источника и preflight папки результата — до
+                    // запуска инструмента и до новой авторизации; сессия
+                    // переиспользуется только при том же источнике.
+                    let confirmed = try await confirmPhysicalSource(drive)
+                    try PhysicalQuickRecovery.preflightRecoveryOutput(
+                        outputFolderURL: outputFolderURL,
+                        drive: confirmed
+                    )
+                    results = try await executor.recoverDetailed(
+                        drive: confirmed,
                         outputFolderURL: outputFolderURL,
                         candidates: chosen
                     ) { [weak self] text in self?.log.append(text) }
                 } else if let imageURL {
-                    urls = try await executor.recover(
+                    results = try await executor.recoverDetailed(
                         imageURL: imageURL,
                         outputFolderURL: outputFolderURL,
                         candidates: chosen
                     ) { [weak self] text in self?.log.append(text) }
                 } else { return }
                 finishTimer()
-                state = .succeeded(urls.count, outputFolderURL)
-                log.append("Готово. Создано файлов: \(urls.count).\n")
+                if results.isEmpty {
+                    // Пустой quick-результат — нормальное состояние без
+                    // ложного успеха «сохранено 0».
+                    state = .scanFinished
+                    log.append("Удалённые файлы не найдены — восстанавливать нечего.\n")
+                } else {
+                    let summary = QuickRecoverySummary.make(folder: outputFolderURL, results: results)
+                    state = .succeeded(summary)
+                    log.append("Готово. Сохранено файлов: \(summary.savedCount).\n")
+                    if summary.incompleteCount > 0 {
+                        log.append("Внимание: \(summary.incompleteCount) файл(ов) извлечены не полностью.\n")
+                    }
+                }
+                // Извлечение завершено — физическая quick-сессия своё отжила.
+                executor.resetPhysicalSession()
             } catch let error as DeletedFilesError {
                 handle(error)
             } catch {
                 finishTimer()
                 state = .failed(UserFacingFailure.make(from: error))
                 log.append("\(error.localizedDescription)\n")
+                executor.resetPhysicalSession()
             }
         }
     }
@@ -294,16 +321,11 @@ final class DeletedFilesViewModel: ObservableObject {
             do {
                 let result: DeepRecoveryResult
                 if let drive {
-                    let currentDrives = try await driveDiscovery.load()
-                    guard let currentDrive = currentDrives.first(where: { $0.id == drive.id }) else {
-                        throw DeletedFilesError.sourceUnavailable
-                    }
-                    guard currentDrive.size == drive.size,
-                          currentDrive.name == drive.name else {
-                        throw DeletedFilesError.sourceChanged
-                    }
+                    // Сверка источника до авторизации; preflight папки до
+                    // создания авторизации выполняет общий адаптер Core.
+                    let confirmed = try await confirmPhysicalSource(drive)
                     result = try await executor.deepRecover(
-                        drive: currentDrive,
+                        drive: confirmed,
                         outputFolderURL: outputFolderURL,
                         onSessionReady: { [weak self] url in
                             self?.beginProgressMonitoring(sessionURL: url)
@@ -342,9 +364,29 @@ final class DeletedFilesViewModel: ObservableObject {
         task?.cancel()
     }
 
+    /// Повторное обнаружение и сверка выбранного физического источника по
+    /// свежему снимку: правила (`diskN`, точное имя, точный размер) живут в
+    /// `PhysicalDriveSelector.selectDrive`. При исчезновении/подмене диска
+    /// операция отказывает до авторизации; прежняя quick-сессия сбрасывается.
+    private func confirmPhysicalSource(_ drive: ExternalDrive) async throws -> ExternalDrive {
+        let snapshot = try await driveDiscovery.load()
+        do {
+            return try PhysicalDriveSelector.selectDrive(
+                identifier: drive.identifier,
+                expectedName: drive.name,
+                expectedSize: drive.size,
+                from: snapshot
+            )
+        } catch {
+            executor.resetPhysicalSession()
+            throw error
+        }
+    }
+
     private func handle(_ error: DeletedFilesError) {
         let stoppedSessionURL = activeSessionURL
         finishTimer()
+        executor.resetPhysicalSession()
         if error == .cancelled {
             state = .cancelled(stoppedSessionURL)
         } else {
@@ -703,15 +745,15 @@ struct DeletedFilesView: View {
     @ViewBuilder
     private var resultCard: some View {
         switch model.state {
-        case .succeeded(let count, let folder):
+        case .succeeded(let summary):
             OperationResultCard(
-                tone: .success,
-                title: "Восстановление завершено",
-                message: "Сохранено файлов: \(count).",
-                path: folder.path,
+                tone: summary.hasSizeProblems ? .warning : .success,
+                title: summary.title,
+                message: summary.message,
+                path: summary.folder.path,
                 actionTitle: "Открыть папку"
             ) {
-                NSWorkspace.shared.open(folder)
+                NSWorkspace.shared.open(summary.folder)
             }
         case .deepSucceeded(let count, let session):
             OperationResultCard(
