@@ -1,4 +1,5 @@
 import Testing
+import RecoveryCore
 @testable import RecoveryApp
 
 @Test("У каждого направления есть корректное русское название")

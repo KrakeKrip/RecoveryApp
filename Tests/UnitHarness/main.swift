@@ -32,7 +32,15 @@ let request = VideoRepairRequest(
     damagedURL: damaged,
     outputFolderURL: root
 )
-try request.validate()
+// Политика томов: результат и исходники на одном томе теперь отклоняются,
+// поэтому валидация здесь использует внедряемого поставщика с разными
+// томами (в production всегда применяется системный st_dev).
+try request.validate(volumeDevice: { url in
+    var isDirectory: ObjCBool = false
+    let isOutputFolder = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+        && isDirectory.boolValue
+    return isOutputFolder ? 2 : 1
+})
 check(request.resultURL().lastPathComponent == "clip_recovered_2.mp4", "результат не перезаписывается")
 
 do {
@@ -837,5 +845,207 @@ while goneWaited < 150, !noProcess(named: "deep-cancel-shim-running") {
 }
 check(noProcess(named: "deep-cancel-shim-running"),
       "после отмены нет живого дочернего процесса")
+
+// TASK-006: видео — preflight, том-политика, конкуренция имён, JSONL.
+private func expectVideoError(
+    _ request: VideoRepairRequest,
+    _ expectedCase: VideoRepairError,
+    _ message: String,
+    volumeDevice: VideoVolumeDeviceProvider? = nil
+) {
+    do {
+        try request.validate(volumeDevice: volumeDevice)
+        check(false, message)
+    } catch let error as VideoRepairError {
+        // Сравнение по варианту случая: ассоциированные значения не важны.
+        switch (error, expectedCase) {
+        case (.sameInputFiles, .sameInputFiles),
+             (.inputMissing, .inputMissing),
+             (.inputNotRegularFile, .inputNotRegularFile),
+             (.inputNotReadable, .inputNotReadable),
+             (.outputFolderMissing, .outputFolderMissing),
+             (.outputFolderNotWritable, .outputFolderNotWritable),
+             (.outputFolderIsFile, .outputFolderIsFile),
+             (.resultOnSourceVolume, .resultOnSourceVolume),
+             (.volumeIdentityUnknown, .volumeIdentityUnknown),
+             (.toolMissing, .toolMissing),
+             (.launchFailed, .launchFailed),
+             (.toolFailed, .toolFailed),
+             (.outputSpaceExhausted, .outputSpaceExhausted),
+             (.cancelled, .cancelled),
+             (.resultMissing, .resultMissing):
+            check(true, message)
+        default:
+            check(false, "\(message): получено \(error)")
+        }
+    } catch {
+        check(false, message)
+    }
+}
+
+let videoRoot = root.appendingPathComponent("video-repair", isDirectory: true)
+let videoOutput = videoRoot.appendingPathComponent("out", isDirectory: true)
+try FileManager.default.createDirectory(at: videoOutput, withIntermediateDirectories: true)
+let referenceFile = videoRoot.appendingPathComponent("reference.mp4")
+let damagedFile = videoRoot.appendingPathComponent("damaged.mp4")
+_ = FileManager.default.createFile(atPath: referenceFile.path, contents: Data("reference-video".utf8))
+_ = FileManager.default.createFile(atPath: damagedFile.path, contents: Data("damaged-video".utf8))
+let healthyVideoRequest = VideoRepairRequest(
+    referenceURL: referenceFile,
+    damagedURL: damagedFile,
+    outputFolderURL: videoOutput
+)
+
+// Один и тот же файл через symlink отклоняется.
+let damagedSymlink = videoRoot.appendingPathComponent("damaged-alias.mp4")
+try FileManager.default.createSymbolicLink(at: damagedSymlink, withDestinationURL: referenceFile)
+expectVideoError(
+    VideoRepairRequest(referenceURL: referenceFile, damagedURL: damagedSymlink, outputFolderURL: videoOutput),
+    .sameInputFiles,
+    "совпадение входов через symlink отклоняется"
+)
+// Жёсткая ссылка — тот же файл по паре «том + инод».
+let damagedHardlink = videoRoot.appendingPathComponent("damaged-hard.mp4")
+link(referenceFile.path, damagedHardlink.path)
+expectVideoError(
+    VideoRepairRequest(referenceURL: referenceFile, damagedURL: damagedHardlink, outputFolderURL: videoOutput),
+    .sameInputFiles,
+    "совпадение входов через жёсткую ссылку отклоняется"
+)
+// Отсутствующий вход, каталог вместо видео, нечитаемый файл.
+expectVideoError(
+    VideoRepairRequest(
+        referenceURL: videoRoot.appendingPathComponent("absent.mp4"),
+        damagedURL: damagedFile,
+        outputFolderURL: videoOutput
+    ),
+    .inputMissing,
+    "отсутствующий вход отклоняется"
+)
+expectVideoError(
+    VideoRepairRequest(referenceURL: videoRoot, damagedURL: damagedFile, outputFolderURL: videoOutput),
+    .inputNotRegularFile,
+    "каталог на входе отклоняется"
+)
+let lockedVideoFile = videoRoot.appendingPathComponent("locked.mp4")
+_ = FileManager.default.createFile(atPath: lockedVideoFile.path, contents: Data("x".utf8))
+try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: lockedVideoFile.path)
+expectVideoError(
+    VideoRepairRequest(referenceURL: lockedVideoFile, damagedURL: damagedFile, outputFolderURL: videoOutput),
+    .inputNotReadable,
+    "нечитаемый вход отклоняется"
+)
+try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: lockedVideoFile.path)
+
+// Папка результата: отсутствует, файл вместо папки, без права записи.
+expectVideoError(
+    VideoRepairRequest(
+        referenceURL: referenceFile,
+        damagedURL: damagedFile,
+        outputFolderURL: videoRoot.appendingPathComponent("absent-dir")
+    ),
+    .outputFolderMissing,
+    "несуществующая папка результата отклоняется"
+)
+let videoOutputFile = videoRoot.appendingPathComponent("plain.txt")
+_ = FileManager.default.createFile(atPath: videoOutputFile.path, contents: Data("f".utf8))
+expectVideoError(
+    VideoRepairRequest(referenceURL: referenceFile, damagedURL: damagedFile, outputFolderURL: videoOutputFile),
+    .outputFolderIsFile,
+    "файл вместо папки результата отклоняется"
+)
+let readOnlyVideoDir = videoRoot.appendingPathComponent("ro-dir", isDirectory: true)
+try FileManager.default.createDirectory(at: readOnlyVideoDir, withIntermediateDirectories: true)
+try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: readOnlyVideoDir.path)
+expectVideoError(
+    VideoRepairRequest(referenceURL: referenceFile, damagedURL: damagedFile, outputFolderURL: readOnlyVideoDir),
+    .outputFolderNotWritable,
+    "папка без права записи отклоняется"
+)
+try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: readOnlyVideoDir.path)
+
+// Политика томов: seam внедряется только в доменных тестах, production
+// использует системный st_dev; отключить защиту он не позволяет.
+expectVideoError(
+    healthyVideoRequest,
+    .volumeIdentityUnknown,
+    "неопределимый том результата даёт безопасный отказ",
+    volumeDevice: { _ in nil }
+)
+expectVideoError(
+    healthyVideoRequest,
+    .resultOnSourceVolume,
+    "результат на томе исходного видео отклоняется",
+    volumeDevice: { _ in 4242 }
+)
+do {
+    try healthyVideoRequest.validate(volumeDevice: { url in
+        url.path.contains("out") ? 1001 : 1002
+    })
+    check(true, "результат на другом томе проходит валидацию")
+} catch {
+    check(false, "результат на другом томе проходит валидацию: \(error)")
+}
+
+// Конкурентное резервирование имён: параллельные запуски получают разные
+// имена, существующие файлы не перезаписываются, плейсхолдеры остаются.
+let namingRequest = VideoRepairRequest(
+    referenceURL: referenceFile,
+    damagedURL: damagedFile,
+    outputFolderURL: videoOutput
+)
+let reservedNames = await withTaskGroup(of: String.self) { group in
+    for _ in 0..<2 {
+        group.addTask { @Sendable in
+            let (url, descriptor) = namingRequest.reserveResultURL()
+            close(descriptor)
+            return url.lastPathComponent
+        }
+    }
+    var names: [String] = []
+    for await name in group {
+        names.append(name)
+    }
+    return names
+}
+check(reservedNames.count == 2 && Set(reservedNames).count == 2,
+      "параллельное резервирование даёт разные имена: \(reservedNames)")
+let thirdReserved = namingRequest.reserveResultURL()
+close(thirdReserved.descriptor)
+check(!reservedNames.contains(thirdReserved.url.lastPathComponent),
+      "третье резервирование снова выбирает уникальное имя")
+for name in reservedNames {
+    check(FileManager.default.fileExists(atPath: videoOutput.appendingPathComponent(name).path),
+          "зарезервированный плейсхолдер \(name) существует")
+}
+
+// JSONL-события video repair.
+let videoStartedParsed = parseJSONObject(encodeJSON(VideoStartedEvent(
+    reference: "/abs/ref.mp4",
+    damaged: "/abs/dmg.mp4",
+    outputDirectory: "/abs/out"
+)))
+check(videoStartedParsed["event"] as? String == "started"
+      && videoStartedParsed["schemaVersion"] as? Int == 1
+      && videoStartedParsed["reference"] as? String == "/abs/ref.mp4"
+      && videoStartedParsed["damaged"] as? String == "/abs/dmg.mp4"
+      && videoStartedParsed["outputDirectory"] as? String == "/abs/out",
+      "video started содержит абсолютные пути и версию схемы")
+let videoCompletedParsed = parseJSONObject(encodeJSON(VideoCompletedEvent(result: "/abs/out/x_recovered.mp4")))
+check(videoCompletedParsed["event"] as? String == "completed"
+      && videoCompletedParsed["result"] as? String == "/abs/out/x_recovered.mp4",
+      "video completed содержит абсолютный путь результата")
+let videoCancelledNoResult = parseJSONObject(encodeJSON(VideoCancelledEvent(result: nil)))
+check(videoCancelledNoResult["event"] as? String == "cancelled"
+      && videoCancelledNoResult["result"] == nil,
+      "video cancelled без готового файла опускает result")
+let videoCancelledReady = parseJSONObject(encodeJSON(VideoCancelledEvent(result: "/abs/out/x_recovered.mp4")))
+check(videoCancelledReady["result"] as? String == "/abs/out/x_recovered.mp4",
+      "video cancelled с готовым файлом указывает result")
+check(parseJSONObject(encodeJSON(VideoErrorEvent(code: "resultOnSourceVolume", message: "текст")))["code"]
+      as? String == "resultOnSourceVolume",
+      "video error содержит стабильный код")
+check(videoErrorCode(for: VideoRepairError.volumeIdentityUnknown) == "volumeIdentityUnknown",
+      "videoErrorCode отображает случай неизвестного тома")
 
 print("PASS: \(checkCount) domain checks")

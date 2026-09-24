@@ -13,6 +13,7 @@ enum CLICommand: Equatable {
     case quickScan(source: QuickSource, json: Bool)
     case quickRecover(source: QuickSource, output: String, json: Bool)
     case deepRecover(source: QuickSource, output: String, jsonl: Bool)
+    case videoRepair(reference: String, damaged: String, output: String, jsonl: Bool)
 }
 
 enum CLIUsageError: Error, Equatable {
@@ -25,6 +26,8 @@ enum CLIUsageError: Error, Equatable {
     case unknownQuickCommand(String)
     case missingDeepCommand
     case unknownDeepCommand(String)
+    case missingVideoCommand
+    case unknownVideoCommand(String)
     case missingOptionValue(String)
     case missingRequiredOption(String)
     case duplicateOption(String)
@@ -36,9 +39,10 @@ enum CLIUsageError: Error, Equatable {
 }
 
 enum CommandLineParser {
-    /// Опции quick и deep, принимающие значение.
+    /// Опции quick, deep и video, принимающие значение.
     private static let valueOptionTokens: Set<String> = [
-        "--image", "--output", "--drive", "--expected-name", "--expected-size"
+        "--image", "--output", "--drive", "--expected-name", "--expected-size",
+        "--reference", "--damaged"
     ]
     private static let knownOptionTokens: Set<String> =
         valueOptionTokens.union(["--json", "--jsonl", "--all"])
@@ -96,6 +100,8 @@ enum CommandLineParser {
             return try parseQuick(positional: positional, json: json, jsonl: jsonl)
         case "deep":
             return try parseDeep(positional: positional, json: json, jsonl: jsonl)
+        case "video":
+            return try parseVideo(positional: positional, json: json, jsonl: jsonl)
         case let other:
             throw CLIUsageError.unknownCommand(other)
         }
@@ -272,5 +278,54 @@ enum CommandLineParser {
         }
         guard let image else { throw CLIUsageError.missingSourceOption }
         return .deepRecover(source: .image(image), output: output, jsonl: jsonl)
+    }
+
+    /// Исправление видео: только `video repair`; `--json` не поддерживается —
+    /// машинный формат этой команды построчный `--jsonl`. Источники
+    /// `--drive`/`--image` и `--all` к этой команде не относятся.
+    private static func parseVideo(positional: [String], json: Bool, jsonl: Bool) throws -> CLICommand {
+        guard positional.count >= 2 else { throw CLIUsageError.missingVideoCommand }
+        let subcommand = positional[1]
+        guard subcommand == "repair" else {
+            throw CLIUsageError.unknownVideoCommand(subcommand)
+        }
+        if json {
+            throw CLIUsageError.optionNotAllowed("--json", "video repair")
+        }
+
+        var reference: String?
+        var damaged: String?
+        var output: String?
+        var index = 2
+        while index < positional.count {
+            let token = positional[index]
+            // Pre-scan гарантирует пары «опция — значение»; остальные
+            // value-опции других команд сюда запрещены явно.
+            guard valueOptionTokens.contains(token), index + 1 < positional.count else {
+                throw CLIUsageError.unexpectedArgument(token)
+            }
+            let value = positional[index + 1]
+            switch token {
+            case "--reference":
+                guard reference == nil else { throw CLIUsageError.duplicateOption(token) }
+                reference = value
+            case "--damaged":
+                guard damaged == nil else { throw CLIUsageError.duplicateOption(token) }
+                damaged = value
+            case "--output":
+                guard output == nil else { throw CLIUsageError.duplicateOption(token) }
+                output = value
+            case "--image", "--drive", "--expected-name", "--expected-size":
+                throw CLIUsageError.optionNotAllowed(token, "video repair")
+            default:
+                throw CLIUsageError.unexpectedArgument(token)
+            }
+            index += 2
+        }
+
+        guard let reference else { throw CLIUsageError.missingRequiredOption("--reference") }
+        guard let damaged else { throw CLIUsageError.missingRequiredOption("--damaged") }
+        guard let output else { throw CLIUsageError.missingRequiredOption("--output") }
+        return .videoRepair(reference: reference, damaged: damaged, output: output, jsonl: jsonl)
     }
 }

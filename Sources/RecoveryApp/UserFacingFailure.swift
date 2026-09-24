@@ -72,8 +72,18 @@ struct UserFacingFailure: Equatable {
             UserFacingFailure(title: "Нужны два разных видео", message: error.localizedDescription)
         case .inputMissing:
             UserFacingFailure(title: "Исходный файл исчез", message: "Один из выбранных файлов больше недоступен. Выберите файлы заново.")
+        case .inputNotRegularFile:
+            UserFacingFailure(title: "Неверный источник", message: "Выберите обычные видеофайлы, а не папки или устройства.")
+        case .inputNotReadable:
+            UserFacingFailure(title: "Файл недоступен", message: "macOS не разрешила чтение одного из выбранных файлов. Проверьте права доступа.")
         case .outputFolderMissing, .outputFolderNotWritable:
             UserFacingFailure(title: "Папка результата недоступна", message: error.localizedDescription)
+        case .outputFolderIsFile:
+            UserFacingFailure(title: "Папка результата недоступна", message: "Путь результата указывает на файл. Выберите отдельную папку на другом диске.")
+        case .resultOnSourceVolume:
+            UserFacingFailure(title: "Нужен другой диск", message: error.localizedDescription)
+        case .volumeIdentityUnknown:
+            UserFacingFailure(title: "Носитель не определён", message: "Не удалось надёжно определить носитель результата. Для безопасности выберите папку на другом диске и повторите попытку.")
         case .toolMissing:
             UserFacingFailure(
                 title: "Компонент приложения повреждён",

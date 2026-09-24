@@ -2,14 +2,17 @@
 set -euo pipefail
 
 project_dir="${0:A:h:h}"
-fixture_dir="${VIDEO_FIXTURE_DIR:-$project_dir/work/tests/video-e2e}"
+# VIDEO_FIXTURE_DIR задаёт только корень: тест создаёт внутри него
+# уникальный подкаталог запуска и никогда не удаляет сам корень, поэтому
+# повторный запуск и случайное указание пользовательской папки безопасны.
+fixture_root="${VIDEO_FIXTURE_DIR:-$project_dir/work/tests/video-e2e}"
+fixture_dir="$fixture_root/run-$RANDOM-$$"
 tool="$project_dir/ThirdParty/untrunc/bin/arm64/untrunc"
 
 command -v ffmpeg >/dev/null || { echo "Для теста нужен ffmpeg" >&2; exit 1; }
 command -v ffprobe >/dev/null || { echo "Для теста нужен ffprobe" >&2; exit 1; }
 test -x "$tool"
 
-rm -rf "$fixture_dir"
 mkdir -p "$fixture_dir/output"
 
 ffmpeg -hide_banner -loglevel error -y \

@@ -372,6 +372,125 @@ private func runDeepRecover(
     return 0
 }
 
+// MARK: - video repair: общий untrunc-бэкенд Core, JSONL и Ctrl-C
+
+/// Состояние одного запуска video repair: задача для обработчика Ctrl-C.
+private final class VideoRunState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var repairTask: Task<URL, Error>?
+    private var interrupted = false
+
+    /// Ctrl-C до создания задачи не должен теряться: регистрация отменяет.
+    func register(_ task: Task<URL, Error>) {
+        lock.lock()
+        repairTask = task
+        let alreadyInterrupted = interrupted
+        lock.unlock()
+        if alreadyInterrupted { task.cancel() }
+    }
+
+    func interrupt() {
+        lock.lock()
+        interrupted = true
+        let task = repairTask
+        lock.unlock()
+        task?.cancel()
+    }
+}
+
+private func isVideoCancellation(_ error: Error) -> Bool {
+    if error is CancellationError { return true }
+    if let videoError = error as? VideoRepairError, case .cancelled = videoError { return true }
+    return false
+}
+
+/// Исправление видео через общий backend Core: preflight, потоковый `started`,
+/// JSONL или русский текст, Ctrl-C с кодом 130.
+private func runVideoRepair(
+    reference: String,
+    damaged: String,
+    output: String,
+    jsonl: Bool
+) async -> Int32 {
+    let emitter = DeepEventEmitter(jsonl: jsonl)
+    let state = VideoRunState()
+    let startedAt = Date()
+    let referenceURL = absoluteFileURL(reference)
+    let damagedURL = absoluteFileURL(damaged)
+    let outputURL = absoluteFileURL(output)
+
+    // Preflight до установки обработчиков и запуска инструмента; ошибки
+    // preflight — событие error со стабильным кодом, код выхода 1.
+    let request = VideoRepairRequest(
+        referenceURL: referenceURL,
+        damagedURL: damagedURL,
+        outputFolderURL: outputURL
+    )
+    do {
+        try request.validate()
+    } catch {
+        emitter.jsonLine(VideoErrorEvent(
+            code: videoErrorCode(for: error),
+            message: error.localizedDescription
+        ))
+        if !jsonl { emitter.diagnostic("Ошибка: \(error.localizedDescription)\n") }
+        return 1
+    }
+
+    installDeepInterruptHandlers { [state] in state.interrupt() }
+
+    let backend = VideoRepairExecutor()
+    let repairTask = Task<URL, Error> { [emitter] in
+        try await backend.run(
+            request: request,
+            onOutput: { text in emitter.diagnostic(text) },
+            onValidated: { reservedURL in
+                // Потоковое started: после успешного preflight, до запуска
+                // инструмента; пути в машинном выводе абсолютные.
+                emitter.jsonLine(VideoStartedEvent(
+                    reference: referenceURL.path,
+                    damaged: damagedURL.path,
+                    outputDirectory: outputURL.path
+                ))
+                _ = reservedURL
+            }
+        )
+    }
+    state.register(repairTask)
+
+    let result: URL
+    do {
+        result = try await repairTask.value
+    } catch {
+        if isVideoCancellation(error) {
+            // Путь указывается только если untrunc успел завершиться и Core
+            // проверил готовый файл; частично записанный файл не кодируется.
+            let ready = backend.completedResultURL
+            emitter.jsonLine(VideoCancelledEvent(result: ready?.path))
+            if !jsonl {
+                if let ready {
+                    emitter.textLine("Операция остановлена. Готовый файл сохранён: \(ready.path)")
+                } else {
+                    emitter.textLine("Операция остановлена.")
+                }
+            }
+            return 130
+        }
+        emitter.jsonLine(VideoErrorEvent(
+            code: videoErrorCode(for: error),
+            message: error.localizedDescription
+        ))
+        if !jsonl { emitter.diagnostic("Ошибка: \(error.localizedDescription)\n") }
+        return 1
+    }
+    emitter.jsonLine(VideoCompletedEvent(result: result.path))
+    if !jsonl {
+        let elapsed = Int(Date().timeIntervalSince(startedAt))
+        emitter.textLine("Видео восстановлено за \(elapsed / 60):\(String(format: "%02d", elapsed % 60)). Файл результата: \(result.path)")
+    }
+    return 0
+}
+
 /// Технический прогресс физического режима — в stderr, stdout остаётся чистым.
 let progressToStderr: @MainActor @Sendable (String) -> Void = { text in
     FileHandle.standardError.write(Data(text.utf8))
@@ -559,6 +678,10 @@ do {
         // Глубокий режим сам управляет кодами выхода: 0 успех, 1 ошибка,
         // 130 остановка по Ctrl-C.
         exit(await runDeepRecover(source: source, output: output, jsonl: jsonl))
+    case .videoRepair(let reference, let damaged, let output, let jsonl):
+        // Исправление видео тоже само управляет кодами выхода: 0 успех,
+        // 1 ошибка/preflight, 130 остановка по Ctrl-C.
+        exit(await runVideoRepair(reference: reference, damaged: damaged, output: output, jsonl: jsonl))
     }
 } catch let error as CLIUsageError {
     writeErrorLine(CommandLineHelp.description(for: error))

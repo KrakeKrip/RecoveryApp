@@ -259,6 +259,77 @@ struct DeepErrorEvent: Encodable {
     let message: String
 }
 
+// MARK: - JSONL-события `video repair --jsonl`
+//
+// Тот же контракт, что у deep recover: по одному валидному JSON-объекту на
+// строку в stdout, диагностика и сырой вывод untrunc — только в stderr.
+
+struct VideoStartedEvent: Encodable {
+    let event = "started"
+    let schemaVersion = 1
+    /// Абсолютные пути после preflight; событие посылается до запуска
+    /// инструмента, поэтому поступает потоком, а не при завершении.
+    let reference: String
+    let damaged: String
+    let outputDirectory: String
+}
+
+struct VideoCompletedEvent: Encodable {
+    let event = "completed"
+    let schemaVersion = 1
+    /// Абсолютный путь готового файла результата.
+    let result: String
+}
+
+/// Итог после Ctrl-C. Путь результата указывается только когда есть
+/// достоверно готовый файл (инструмент успел завершиться успешно); частично
+/// записанный файл готовым результатом не считается и ключом не кодируется.
+struct VideoCancelledEvent: Encodable {
+    let event = "cancelled"
+    let schemaVersion = 1
+    let result: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case event, schemaVersion, result
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(event, forKey: .event)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encodeIfPresent(result, forKey: .result)
+    }
+}
+
+struct VideoErrorEvent: Encodable {
+    let event = "error"
+    let schemaVersion = 1
+    let code: String
+    let message: String
+}
+
+/// Стабильные коды ошибки для события error команды video repair.
+func videoErrorCode(for error: Error) -> String {
+    guard let videoError = error as? VideoRepairError else { return "internal" }
+    return switch videoError {
+    case .sameInputFiles: "sameInputFiles"
+    case .inputMissing: "inputMissing"
+    case .inputNotRegularFile: "inputNotRegularFile"
+    case .inputNotReadable: "inputNotReadable"
+    case .outputFolderMissing: "outputFolderMissing"
+    case .outputFolderNotWritable: "outputFolderNotWritable"
+    case .outputFolderIsFile: "outputFolderIsFile"
+    case .resultOnSourceVolume: "resultOnSourceVolume"
+    case .volumeIdentityUnknown: "volumeIdentityUnknown"
+    case .toolMissing: "toolMissing"
+    case .launchFailed: "launchFailed"
+    case .toolFailed: "toolFailed"
+    case .outputSpaceExhausted: "outputSpaceExhausted"
+    case .cancelled: "cancelled"
+    case .resultMissing: "resultMissing"
+    }
+}
+
 /// Вывод машинных событий и диагностики deep recover. stdout в режиме --jsonl
 /// содержит только по одному валидному JSON-объекту на строку: событие и
 /// перевод строки записываются одной атомарной записью под блокировкой, чтобы
@@ -344,12 +415,20 @@ enum CommandLineHelp {
               Глубокий сигнатурный поиск PhotoRec по всему образу: JPEG, PNG, MOV/MP4
           recoveryapp-cli deep recover --drive diskN --expected-name ИМЯ --expected-size БАЙТЫ --output ПАПКА [--jsonl]
               Глубокий сигнатурный поиск по внешнему накопителю только для чтения
+          recoveryapp-cli video repair --reference ФАЙЛ --damaged ФАЙЛ --output ПАПКА [--jsonl]
+              Исправить повреждённое видео по исправному примеру через untrunc
 
         --image и --drive взаимоисключающие. Для --drive система заново
         обнаруживает накопитель и сверяет точные имя и размер до запроса
         разрешения; одна команда создаёт не более одного системного запроса.
         macOS может показать запрос пароля для read-only доступа.
         Пароль CLI не принимает ни в каком виде.
+
+        video repair требует, чтобы оба входа существовали, были обычными
+        читаемыми файлами и не совпадали даже через symlink, а папка
+        результата находилась на другом томе, чем исходные видео. Имя
+        результата (_recovered, _recovered_2, …) никогда не перезаписывает
+        существующие файлы, исходные видео остаются неизменными.
 
         Глубокий режим сразу запускает PhotoRec без предварительного скана и
         создаёт уникальную папку сессии внутри --output: результаты, журнал и
@@ -359,19 +438,20 @@ enum CommandLineHelp {
         уже найденные файлы остаются в папке сессии.
 
         --json — машинночитаемый результат одной JSON-строкой (quick, drives,
-        version). --jsonl — построчные JSON-события deep recover в stdout:
-        started (источник и папка сессии), progress (прошедшее время, найдено
-        файлов, доступные счётчики чтения), completed (папка сессии, число и
-        пути файлов), cancelled (папка сессии и уже найденные файлы), error
-        (стабильный код и понятное сообщение). Диагностика всегда идёт в stderr.
+        version). --jsonl — построчные JSON-события в stdout для deep recover
+        и video repair: started (источник и папка сессии / абсолютные пути
+        входов), progress (только deep recover), completed, cancelled, error
+        (стабильный код и понятное сообщение). Диагностика всегда идёт в
+        stderr, для video repair туда же идёт сырой вывод untrunc.
 
         Пути встроенных инструментов берутся из переменных окружения
         RECOVERYAPP_MMLS_PATH, RECOVERYAPP_FLS_PATH, RECOVERYAPP_ICAT_PATH,
-        RECOVERYAPP_PHOTOREC_PATH, RECOVERYAPP_READONLY_HELPER_PATH.
+        RECOVERYAPP_PHOTOREC_PATH, RECOVERYAPP_READONLY_HELPER_PATH,
+        RECOVERYAPP_UNTRUNC_PATH.
 
         Коды выхода: 0 — успех (включая пустой результат); 1 — ошибка
-        выполнения; 2 — неверные аргументы; 130 — операция остановлена
-        (Ctrl-C), найденные файлы сохранены.
+        выполнения или preflight; 2 — неверные аргументы; 130 — операция
+        остановлена (Ctrl-C), найденные файлы сохранены.
         """
 
     static func description(for error: CLIUsageError) -> String {
@@ -394,6 +474,10 @@ enum CommandLineHelp {
             "После «deep» укажите подкоманду «recover»."
         case .unknownDeepCommand(let name):
             "Неизвестная подкоманда «\(name)» для deep. Доступно: deep recover."
+        case .missingVideoCommand:
+            "После «video» укажите подкоманду «repair»."
+        case .unknownVideoCommand(let name):
+            "Неизвестная подкоманда «\(name)» для video. Доступно: video repair."
         case .missingOptionValue(let option):
             "После «\(option)» укажите значение."
         case .missingRequiredOption(let option):
