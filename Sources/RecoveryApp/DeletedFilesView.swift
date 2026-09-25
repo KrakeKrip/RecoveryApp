@@ -14,76 +14,44 @@ struct DeletedFilesView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
-            drivePicker
-            FileChoiceRow(title: "Папка результата", url: model.outputFolderURL) {
-                model.selectingOutput = true
-            }
-            .disabled(model.isBusy)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                header
 
-            DisclosureGroup("Для специалистов: открыть образ накопителя", isExpanded: $model.showingAdvancedSource) {
-                FileChoiceRow(title: "Файл IMG, RAW, DD или DMG", url: model.imageURL) {
-                    chooseDiskImage()
+                HStack(alignment: .top, spacing: 12) {
+                    sourceCard
+                    outputCard
                 }
-                Text("Выбор образа отключит выбранный физический накопитель. Этот режим нужен для экспертизы и повторяемых тестов.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
 
-            HStack {
-                if model.usesPhysicalDrive {
-                    Button("Быстрый поиск по именам") { model.scan() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!model.canScan)
-                } else {
-                    Button("Найти удалённые файлы") { model.scan() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!model.canScan)
-                }
+                Label(
+                    "Источник открывается только для чтения. Найденные файлы сохраняются отдельно.",
+                    systemImage: "lock.shield"
+                )
+                .font(.caption)
+                .foregroundStyle(.green)
+
                 if model.isBusy {
-                    Spacer()
-                    Button("Остановить", role: .destructive) { model.cancel() }
-                } else {
-                    statusView
-                    Spacer()
-                    Button("Глубокий поиск PhotoRec") {
-                        model.confirmingDeepRecovery = true
+                    activityPanel
+                    HStack {
+                        Spacer()
+                        Button("Остановить", role: .destructive) { model.cancel() }
                     }
-                    .disabled(!model.canDeepRecover)
+                } else if model.hasTerminalResult {
+                    resultCard
+                    Button("Начать новый поиск") { model.scan() }
+                        .disabled(!model.canScan || model.outputFolderURL == nil)
+                } else if model.state == .scanFinished {
+                    scanResults
+                } else {
+                    searchActions
                 }
+
+                advancedSource
+                LogPanel(isExpanded: $model.showingLog, text: model.log)
             }
-
-            if model.isBusy {
-                activityPanel
-            }
-
-            resultCard
-
-            if model.hasTerminalResult {
-                Spacer(minLength: 0)
-            } else if model.candidates.isEmpty {
-                ContentUnavailableView {
-                    Label("Список находок пуст", systemImage: "doc.text.magnifyingglass")
-                } description: {
-                    Text(emptyStateDescription)
-                }
-                .frame(maxHeight: .infinity)
-            } else {
-                findingsTable
-                HStack {
-                    Text("Выбрано: \(model.selection.count) из \(model.candidates.count)")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Восстановить выбранные") { model.recoverSelected() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!model.canRecover)
-                }
-            }
-
-            LogPanel(isExpanded: $model.showingLog, text: model.log)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(26)
         }
-        .padding(26)
         .navigationTitle("Удалённые файлы")
         .task { await model.refreshDrives() }
         .fileImporter(isPresented: $model.selectingOutput, allowedContentTypes: [.folder]) { result in
@@ -101,9 +69,30 @@ struct DeletedFilesView: View {
         }
     }
 
-    private var drivePicker: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack {
+    private var sourceCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("1 · Откуда восстановить")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if let image = model.imageURL {
+                Text(image.lastPathComponent)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text("Выбран образ накопителя")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if !model.drives.isEmpty {
+                    Menu("Переключиться на флешку") {
+                        ForEach(model.drives) { drive in
+                            Button(drive.displayName) { model.selectDrive(id: drive.id) }
+                        }
+                    }
+                    .font(.caption)
+                    .disabled(model.isBusy)
+                }
+            } else {
                 Picker(
                     "Накопитель",
                     selection: Binding(
@@ -111,30 +100,158 @@ struct DeletedFilesView: View {
                         set: { model.selectDrive(id: $0.isEmpty ? nil : $0) }
                     )
                 ) {
-                    Text("Не выбрано").tag("")
+                    Text("Выберите накопитель").tag("")
                     ForEach(model.drives) { drive in
                         Text(drive.displayName).tag(drive.id)
                     }
                 }
+                .labelsHidden()
                 .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .disabled(model.drivesLoading || model.isBusy)
 
-                Button {
-                    Task { await model.refreshDrives() }
-                } label: {
-                    Label("Обновить", systemImage: "arrow.clockwise")
+                if model.selectedDrive != nil {
+                    Text("Внешний накопитель выбран")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text(model.driveMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
-                .disabled(model.drivesLoading || model.isBusy)
-
-                if model.drivesLoading { ProgressView().controlSize(.small) }
             }
-            Text(model.driveMessage)
+
+            Button {
+                Task { await model.refreshDrives() }
+            } label: {
+                Label("Обновить список", systemImage: "arrow.clockwise")
+            }
+            .font(.caption)
+            .disabled(model.drivesLoading || model.isBusy)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var outputCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("2 · Куда сохранить")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            if let drive = model.selectedDrive {
-                Label("Источник открывается только для чтения: \(drive.rawDevicePath)", systemImage: "lock.shield")
+            Text(model.outputFolderURL?.lastPathComponent ?? "Папка не выбрана")
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Text(model.outputFolderURL?.path ?? "Выберите папку на другом диске")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .truncationMode(.middle)
+            Button(model.outputFolderURL == nil ? "Выбрать папку…" : "Изменить папку…") {
+                model.selectingOutput = true
+            }
+            .font(.caption)
+            .disabled(model.isBusy)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var advancedSource: some View {
+        DisclosureGroup("Для специалистов: открыть образ накопителя", isExpanded: $model.showingAdvancedSource) {
+            FileChoiceRow(title: "Файл IMG, RAW, DD или DMG", url: model.imageURL) {
+                chooseDiskImage()
+            }
+            Text("Выбор образа отключит выбранный физический накопитель. Этот режим нужен для экспертизы и повторяемых тестов.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .disabled(model.isBusy)
+    }
+
+    private var searchActions: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 18) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Начните с быстрого поиска")
+                        .font(.headline)
+                    Text("Покажет удалённые файлы. Имена сохранятся, если они уцелели.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 12)
+                Button("Найти удалённые файлы") { model.scan() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!model.canScan || model.outputFolderURL == nil)
+            }
+            .padding(18)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+
+            if !model.canScan || model.outputFolderURL == nil {
+                Text("Чтобы начать, выберите источник и папку результата.")
                     .font(.caption)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.secondary)
+            }
+
+            deepSearchOption
+        }
+    }
+
+    private var deepSearchOption: some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Не нашли нужное?")
+                    .font(.subheadline.weight(.semibold))
+                Text("Глубокий поиск может найти фото и видео, но без исходных имён и папок.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Button("Глубокий поиск") { model.confirmingDeepRecovery = true }
+                .disabled(!model.canDeepRecover)
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private var scanResults: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Поиск завершён · найдено файлов: \(model.candidates.count)")
+                        .font(.headline)
+                    Text("Отметьте, что сохранить. Найденные файлы могут быть повреждены.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Повторить поиск") { model.scan() }
+                    .disabled(!model.canScan || model.outputFolderURL == nil)
+            }
+            .padding(16)
+            .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+
+            if model.candidates.isEmpty {
+                ContentUnavailableView {
+                    Label("Удалённых файлов не найдено", systemImage: "doc.text.magnifyingglass")
+                } description: {
+                    Text("Попробуйте глубокий поиск фото и видео или другой накопитель.")
+                }
+                .frame(minHeight: 170)
+                deepSearchOption
+            } else {
+                findingsTable
+                HStack {
+                    Text("Выбрано: \(model.selection.count) из \(model.candidates.count)")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Восстановить выбранные") { model.recoverSelected() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!model.canRecover)
+                }
             }
         }
     }
@@ -181,52 +298,29 @@ struct DeletedFilesView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Восстановление удалённых файлов")
+            Text("Восстановление файлов")
                 .font(.largeTitle.bold())
-            Text("Выберите подключённую флешку или карту памяти и отдельную папку для результата. Исходный накопитель открывается только для чтения.")
+            Text("Выберите, откуда искать файлы и куда сохранить найденное.")
                 .foregroundStyle(.secondary)
-            Label(
-                "Быстрый поиск сохраняет имена, когда метаданные уцелели; PhotoRec ищет фото и видео без имён.",
-                systemImage: "checkmark.shield"
-            )
-            .font(.callout)
-            .foregroundStyle(.orange)
         }
     }
 
     private var findingsTable: some View {
         Table(model.candidates, selection: $model.selection) {
-            TableColumn("Имя") { item in
+            TableColumn("Файл") { item in
                 Text(item.displayName).lineLimit(1)
             }
             TableColumn("Исходная папка") { item in
                 Text(item.folder).lineLimit(1)
             }
-            TableColumn("Тип") { item in
-                Text(item.typeDescription)
+            TableColumn("Размер") { item in
+                Text(item.expectedSize.map {
+                    ByteCountFormatter.string(fromByteCount: $0, countStyle: .file)
+                } ?? "Неизвестен")
             }
-            .width(70)
-            TableColumn("Запись") { item in
-                Text(item.inode).font(.system(.caption, design: .monospaced))
-            }
-            .width(90)
+            .width(110)
         }
-        .frame(minHeight: 220)
-    }
-
-    @ViewBuilder
-    private var statusView: some View {
-        switch model.state {
-        case .ready:
-            Text("Готово к поиску").foregroundStyle(.secondary)
-        case .scanning, .recovering, .deepRecovering:
-            EmptyView()
-        case .scanFinished:
-            Label("Поиск завершён", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-        case .succeeded, .deepSucceeded, .failed, .cancelled:
-            EmptyView()
-        }
+        .frame(minHeight: 250)
     }
 
     @ViewBuilder
@@ -275,13 +369,6 @@ struct DeletedFilesView: View {
         return String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
 
-    private var emptyStateDescription: String {
-        if model.usesPhysicalDrive {
-            return "Выберите папку результата на другом диске и нажмите «Начать восстановление»."
-        }
-        return "Выберите накопитель выше или откройте raw/IMG/DMG-образ в режиме для специалистов."
-    }
-
     private var confirmationMessage: String {
         let capacityWarning = outputCapacityWarning.map { "\n\n⚠️ \($0)" } ?? ""
         if model.usesPhysicalDrive {
@@ -316,5 +403,6 @@ struct DeletedFilesView: View {
         panel.allowedContentTypes = [recoveryDiskImageType]
         guard panel.runModal() == .OK, let url = panel.url else { return }
         model.selectImage(url)
+        model.showingAdvancedSource = false
     }
 }
