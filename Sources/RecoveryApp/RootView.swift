@@ -7,28 +7,27 @@ struct RootView: View {
         NavigationStack {
             ZStack {
                 LinearGradient(
-                    colors: [Color.accentColor.opacity(0.10), Color.clear],
+                    colors: [RecoveryPalette.plum.opacity(0.20), Color.clear],
                     startPoint: .topLeading,
-                    endPoint: .center
+                    endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
 
-                VStack(alignment: .leading, spacing: 28) {
-                    VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 7) {
                         Text("RecoveryApp")
-                            .font(.system(size: 34, weight: .bold, design: .rounded))
-                        Text("Безопасное восстановление данных на macOS")
-                            .font(.title3)
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                        Text("Что нужно восстановить?")
+                            .font(.title2)
                             .foregroundStyle(.secondary)
                     }
 
-                    HStack(spacing: 18) {
+                    HStack(spacing: 16) {
                         FeatureCard(
                             icon: "video.badge.ellipsis",
                             title: "Повреждённые видео",
                             description: "Исправление видео по рабочему примеру с того же устройства.",
-                            status: "Встроенный untrunc готов",
-                            tint: .blue
+                            status: "Исправить видео"
                         ) {
                             model.selectedFeature = .videoRepair
                         }
@@ -37,16 +36,16 @@ struct RootView: View {
                             icon: "externaldrive.badge.questionmark",
                             title: "Удалённые файлы",
                             description: "Поиск на USB, SD-картах и внешних накопителях только для чтения.",
-                            status: "Накопители и PhotoRec готовы",
-                            tint: .orange
+                            status: "Найти файлы"
                         ) {
                             model.selectedFeature = .deletedFiles
                         }
                     }
 
                     SafetyNotice()
-                    Spacer(minLength: 0)
                 }
+                .frame(maxWidth: 1120)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .padding(36)
             }
             .navigationDestination(item: $model.selectedFeature) { feature in
@@ -57,6 +56,7 @@ struct RootView: View {
                 }
             }
         }
+        .tint(RecoveryPalette.plum)
     }
 }
 
@@ -65,32 +65,36 @@ private struct FeatureCard: View {
     let title: String
     let description: String
     let status: String
-    let tint: Color
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 16) {
-                Image(systemName: icon)
-                    .font(.system(size: 32))
-                    .foregroundStyle(tint)
+                HStack {
+                    Image(systemName: icon)
+                        .font(.system(size: 27))
+                        .foregroundStyle(RecoveryPalette.lavender)
+                        .frame(width: 58, height: 58)
+                        .background(RecoveryPalette.plum.opacity(0.16), in: RoundedRectangle(cornerRadius: 17))
+                    Spacer()
+                    Image(systemName: "arrow.up.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
                 Text(title)
                     .font(.title2.bold())
                 Text(description)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.leading)
                 Spacer()
-                Label(status, systemImage: "hammer")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(status)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(RecoveryPalette.lavender)
             }
-            .frame(maxWidth: .infinity, minHeight: 190, alignment: .leading)
-            .padding(22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(.quaternary, lineWidth: 1)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 224)
+            .recoveryPanel()
         }
         .buttonStyle(.plain)
         .accessibilityHint("Открыть раздел")
@@ -111,7 +115,7 @@ private struct SafetyNotice: View {
             }
         }
         .padding(16)
-        .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+        .recoveryPanel()
     }
 }
 

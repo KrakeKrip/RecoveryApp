@@ -23,12 +23,10 @@ struct DeletedFilesView: View {
                     outputCard
                 }
 
-                Label(
-                    "Источник открывается только для чтения. Найденные файлы сохраняются отдельно.",
-                    systemImage: "lock.shield"
-                )
-                .font(.caption)
-                .foregroundStyle(.green)
+                Label("Источник не изменяется · результат сохраняется отдельно", systemImage: "lock.shield")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.green)
+                    .padding(.horizontal, 2)
 
                 if model.isBusy {
                     activityPanel
@@ -49,8 +47,10 @@ struct DeletedFilesView: View {
                 advancedSource
                 LogPanel(isExpanded: $model.showingLog, text: model.log)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(26)
+            .frame(maxWidth: 1120, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 30)
         }
         .navigationTitle("Удалённые файлы")
         .task { await model.refreshDrives() }
@@ -70,10 +70,8 @@ struct DeletedFilesView: View {
     }
 
     private var sourceCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("1 · Откуда восстановить")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            RecoveryStepHeading(number: 1, title: "Откуда восстановить", symbol: "externaldrive")
 
             if let image = model.imageURL {
                 Text(image.lastPathComponent)
@@ -131,15 +129,12 @@ struct DeletedFilesView: View {
             .disabled(model.drivesLoading || model.isBusy)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .recoveryPanel()
     }
 
     private var outputCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("2 · Куда сохранить")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            RecoveryStepHeading(number: 2, title: "Куда сохранить", symbol: "folder")
             Text(model.outputFolderURL?.lastPathComponent ?? "Папка не выбрана")
                 .font(.subheadline.weight(.medium))
                 .lineLimit(1)
@@ -154,10 +149,12 @@ struct DeletedFilesView: View {
             }
             .font(.caption)
             .disabled(model.isBusy)
+            Text("Проверьте свободное место: найденные файлы могут занимать много памяти.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .recoveryPanel()
     }
 
     private var advancedSource: some View {
@@ -173,30 +170,26 @@ struct DeletedFilesView: View {
     }
 
     private var searchActions: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 18) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Начните с быстрого поиска")
-                        .font(.headline)
-                    Text("Покажет удалённые файлы. Имена сохранятся, если они уцелели.")
+                VStack(alignment: .leading, spacing: 8) {
+                    RecoveryStepHeading(number: 3, title: "Найти удалённые файлы", symbol: "magnifyingglass")
+                    Text("Начните с быстрого поиска — он может сохранить исходные имена файлов.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 12)
-                Button("Найти удалённые файлы") { model.scan() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .disabled(!model.canScan || model.outputFolderURL == nil)
+                if model.canScan && model.outputFolderURL != nil {
+                    Button("Начать поиск") { model.scan() }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                } else {
+                    Label("Сначала выберите источник и папку", systemImage: "arrow.up")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(18)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-
-            if !model.canScan || model.outputFolderURL == nil {
-                Text("Чтобы начать, выберите источник и папку результата.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
+            .recoveryPanel()
             deepSearchOption
         }
     }
@@ -212,9 +205,10 @@ struct DeletedFilesView: View {
             }
             Spacer(minLength: 8)
             Button("Глубокий поиск") { model.confirmingDeepRecovery = true }
+                .buttonStyle(.bordered)
                 .disabled(!model.canDeepRecover)
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 6)
     }
 
     private var scanResults: some View {
@@ -231,8 +225,7 @@ struct DeletedFilesView: View {
                 Button("Повторить поиск") { model.scan() }
                     .disabled(!model.canScan || model.outputFolderURL == nil)
             }
-            .padding(16)
-            .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+            .recoveryPanel()
 
             if model.candidates.isEmpty {
                 ContentUnavailableView {
@@ -297,12 +290,11 @@ struct DeletedFilesView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Восстановление файлов")
-                .font(.largeTitle.bold())
-            Text("Выберите, откуда искать файлы и куда сохранить найденное.")
-                .foregroundStyle(.secondary)
-        }
+        RecoveryPageHeader(
+            symbol: "externaldrive.badge.questionmark",
+            title: "Восстановление файлов",
+            subtitle: "Три шага: выберите источник, папку результата и способ поиска."
+        )
     }
 
     private var findingsTable: some View {

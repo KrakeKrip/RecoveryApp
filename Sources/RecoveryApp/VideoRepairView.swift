@@ -118,45 +118,61 @@ struct VideoRepairView: View {
     @StateObject private var model = VideoRepairViewModel()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Восстановление видео")
-                .font(.largeTitle.bold())
-            Text("Выберите исправный пример с того же устройства, повреждённое видео и отдельную папку для результата.")
-                .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                RecoveryPageHeader(
+                    symbol: "video.badge.ellipsis",
+                    title: "Восстановление видео",
+                    subtitle: "Нужен исправный пример с того же устройства. Исходное видео не изменится."
+                )
 
-            FileChoiceRow(title: "Исправный пример", url: model.referenceURL) {
-                model.selectingReference = true
-            }
-            FileChoiceRow(title: "Повреждённое видео", url: model.damagedURL) {
-                model.selectingDamaged = true
-            }
-            FileChoiceRow(title: "Папка результата", url: model.outputFolderURL) {
-                model.selectingOutput = true
-            }
-
-            HStack {
-                if model.state == .running {
-                    ProgressView().controlSize(.small)
-                    Text("Обработка • \(formattedElapsed)")
-                    Text("Оставшееся время неизвестно")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Остановить", role: .destructive) { model.cancel() }
-                } else {
-                    statusView
-                    Spacer()
-                    Button("Начать восстановление") { model.start() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!model.canStart)
+                FileChoiceRow(title: "Исправный пример", url: model.referenceURL, step: 1, symbol: "film") {
+                    model.selectingReference = true
                 }
+                FileChoiceRow(title: "Повреждённое видео", url: model.damagedURL, step: 2, symbol: "video") {
+                    model.selectingDamaged = true
+                }
+                FileChoiceRow(title: "Куда сохранить результат", url: model.outputFolderURL, step: 3, symbol: "folder") {
+                    model.selectingOutput = true
+                }
+
+                HStack(spacing: 12) {
+                    Image(systemName: model.state == .running ? "arrow.triangle.2.circlepath" : "sparkles")
+                        .font(.title3)
+                        .foregroundStyle(RecoveryPalette.lavender)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(model.state == .running ? "Исправляем видео · \(formattedElapsed)" : "Готовы исправить видео?")
+                            .font(.headline)
+                        Text(model.state == .running
+                             ? "Точное время окончания неизвестно"
+                             : "Готовый файл появится в выбранной папке отдельно от оригинала.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 12)
+                    if model.state == .running {
+                        ProgressView().controlSize(.small)
+                        Button("Остановить", role: .destructive) { model.cancel() }
+                    } else if model.canStart {
+                        Button("Начать восстановление") { model.start() }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                    } else {
+                        Text("Выберите три пункта выше")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .recoveryPanel()
+
+                resultCard
+                LogPanel(isExpanded: $model.showingLog, text: model.log)
             }
-
-            resultCard
-
-            LogPanel(isExpanded: $model.showingLog, text: model.log)
-            Spacer(minLength: 0)
+            .frame(maxWidth: 1120, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 30)
         }
-        .padding(30)
         .navigationTitle("Повреждённые видео")
         .fileImporter(isPresented: $model.selectingReference, allowedContentTypes: [.movie]) { result in
             if case .success(let url) = result { model.referenceURL = url }
@@ -166,19 +182,6 @@ struct VideoRepairView: View {
         }
         .fileImporter(isPresented: $model.selectingOutput, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result { model.outputFolderURL = url }
-        }
-    }
-
-    @ViewBuilder
-    private var statusView: some View {
-        switch model.state {
-        case .ready:
-            Label("Готово к выбору файлов", systemImage: "circle")
-                .foregroundStyle(.secondary)
-        case .running:
-            EmptyView()
-        case .succeeded, .failed, .cancelled:
-            EmptyView()
         }
     }
 
@@ -217,23 +220,37 @@ struct VideoRepairView: View {
 struct FileChoiceRow: View {
     let title: String
     let url: URL?
+    let step: Int?
+    let symbol: String
     let action: () -> Void
 
+    init(title: String, url: URL?, step: Int? = nil, symbol: String = "doc", action: @escaping () -> Void) {
+        self.title = title
+        self.url = url
+        self.step = step
+        self.symbol = symbol
+        self.action = action
+    }
+
     var body: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 10) {
+            if let step {
+                RecoveryStepHeading(number: step, title: title, symbol: symbol)
+            } else {
                 Text(title).font(.headline)
-                Text(url?.path ?? "Не выбрано")
-                    .font(.callout)
+            }
+            HStack(spacing: 14) {
+                Text(url?.path ?? "Пока не выбрано")
+                    .font(.subheadline)
                     .foregroundStyle(url == nil ? .secondary : .primary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                Spacer()
+                Button(url == nil ? "Выбрать…" : "Изменить…", action: action)
+                    .buttonStyle(.bordered)
             }
-            Spacer()
-            Button(url == nil ? "Выбрать…" : "Изменить…", action: action)
-                .buttonStyle(.bordered)
         }
-        .padding(14)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .recoveryPanel()
     }
 }
