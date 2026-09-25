@@ -76,7 +76,7 @@
   поиска PhotoRec…», сводку PhotoRec 7.2, «PhotoRec создал файлов: 3.»,
   «Готово: …/PhotoRec-Recovery». Переполнения лога в этом прогоне не было —
   проблема прокрутки не воспроизводилась и не исследовалась глубже.
-- Скриншот карточки: `reports/assets/TASK-009/deep-result-card.png`.
+- Скриншот карточки: `reports/assets/TASK-009/deep-result-card.jpg`.
 - Успех этой фикстуры не означает восстанавливаемость произвольных реальных
   файлов (фрагментация/перезапись не моделировались).
 
@@ -99,7 +99,7 @@
 - Повторный запуск: создан `damaged_recovered_2.mp4` (464 476 Б,
   SHA-256 идентичен первому), прежний `damaged_recovered.mp4` не перезаписан
   (mtime/имя сохранены). Входы по-прежнему неизменны.
-- Скриншот карточки: `reports/assets/TASK-009/video-result-card.png`.
+- Скриншот карточки: `reports/assets/TASK-009/video-result-card.jpg`.
 
 ## Изменения кода
 
@@ -108,18 +108,101 @@
 release-пересборка после правок не требуются; полный регресс TASK-008 не
 повторялся (изменений кода нет). Точечные проверки целостности дерева ниже.
 
-## Проверки (команды и результаты)
+## Проверки: фактически выполненные команды
 
-| Команда | Результат |
-|---|---|
-| `./Scripts/build-app.sh` (OUTPUT_DIR=временный каталог) | exit 0 |
-| `codesign --verify --deep --strict <app>` | OK |
-| `cmp` эталоны ↔ PhotoRec-результаты (JPG/PNG/MP4) | все BYTE-EXACT |
-| `ffprobe` результата видео | 2 потока, 4,040272 с |
-| `shasum -a 256` входов видео до/после (дважды) | идентичны |
-| Повторный видео-запуск | `_recovered_2.mp4`, без перезаписи |
-| `git diff --check 3c2fcb4..HEAD` | пусто |
-| `git status` | чисто, кроме `outputs/physical-quick-no-name-20260922/` |
+Ниже — команды **как они исполнялись в сессии TASK-009** (взяты из записи
+сессии, не реконструированы по памяти); их вывод наблюдался в ходе сессии и
+цитируется в предыдущих разделах. Временный каталог
+`/private/tmp/recoveryapp-t009-work` и временная `.app` удалены после
+проверки, поэтому побайтные сравнения и ffprobe повторно выполнить нельзя —
+это честно зафиксировано. После последнего изменения кода (изменений не
+было) повторялись только узкие проверки формата снимков и состояния дерева —
+их вывод актуален на момент коммита.
+
+Сборка `.app` (исполнено в сессии):
+
+```bash
+export SDKROOT="$(xcrun --show-sdk-path)"
+APP_OUT="$(mktemp -d /private/tmp/recoveryapp-t009-app.XXXXXX)"
+OUTPUT_DIR="$APP_OUT" ./Scripts/build-app.sh > /tmp/t9build.log 2>&1; echo "build=$?"      # build=0
+/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" \
+    -c "Print CFBundleVersion" "$APP/Contents/Info.plist"                                # 0.8.1, 13
+file "$APP/Contents/MacOS/RecoveryApp"                                                   # arm64
+codesign --verify --deep --strict "$APP" && echo "CODESIGN STRICT OK"                    # OK
+```
+
+Доказательство принадлежности RAM-дисков (исполнено в сессии, для обоих
+дисков):
+
+```bash
+hdiutil info -plist > "$T9/ram1-before.plist"
+RAM1_DEV=$(hdiutil attach -nomount ram://98304 2>/dev/null | awk 'NR==1{print $1}')
+hdiutil info -plist > "$T9/ram1-after.plist"
+python3 - "$RAM1_DEV" 98304 "$T9/ram1-before.plist" "$T9/ram1-after.plist" <<'PY'
+# проверка: dev есть в after, image-path == "ram://98304", dev нет в before
+PY
+# вывод: RAM1 VERIFIED: /dev/disk4 = ram://98304; аналогично RAM2: /dev/disk6
+diskutil eraseVolume APFS T009DEEP /dev/disk4
+# фактическая точка монтирования: diskutil info -plist + diskutil list -plist
+# RAM1_MNT=/Volumes/T009DEEP; RAM2_MNT=/Volumes/T009VID
+```
+
+Фикстуры и эталонные суммы (исполнено в сессии):
+
+```bash
+ffmpeg -y -f lavfi -i 'testsrc2=size=640x360:rate=1:duration=1' -frames:v 1 \
+    -c:v mjpeg -q:v 2 "$T9/CARD.JPG"
+ffmpeg -y -f lavfi -i 'testsrc2=size=640x360:rate=1:duration=1' -frames:v 1 "$T9/CARD.PNG"
+ffmpeg -y -f lavfi -i 'testsrc2=size=640x360:rate=25:duration=2' \
+    -f lavfi -i 'sine=frequency=440:duration=2' -c:v libx264 -pix_fmt yuv420p \
+    -c:a aac -movflags +faststart -y "$T9/CLIP.MP4"
+mformat -i "$RAM1_MNT/deep.img" -C -F -v T009DEEP -T 65536 ::
+mcopy -i "$RAM1_MNT/deep.img" "$T9/CARD.JPG" ::/CARD.JPG   # и PNG, MP4
+mdel  -i "$RAM1_MNT/deep.img" ::/CARD.JPG ::/CARD.PNG ::/CLIP.MP4
+shasum -a 256 "$T9/CARD.JPG" "$T9/CARD.PNG" "$T9/CLIP.MP4" | tee "$T9/reference.sha256"
+```
+
+Проверка результатов PhotoRec (исполнено в сессии; каталог удалён после —
+повтор невозможен):
+
+```bash
+R="$T9/deep-out/PhotoRec-Recovery/Recovered.1"
+ls -la "$R"
+cmp "$T9/CARD.JPG" "$R/f0001041.jpg" && echo "JPG BYTE-EXACT"   # OK
+cmp "$T9/CARD.PNG" "$R/f0001086.png" && echo "PNG BYTE-EXACT"   # OK
+cmp "$T9/CLIP.MP4" "$R/f0001139.mp4" && echo "MP4 BYTE-EXACT"   # OK
+```
+
+Проверка видео (исполнено в сессии; каталог удалён после — повтор
+невозможен):
+
+```bash
+RESULT="$T9/video-out/damaged_recovered.mp4"
+test -s "$RESULT" && echo "NON-EMPTY OK"
+ffprobe -v error -show_entries stream=index -of csv=p=0 "$RESULT" | wc -l      # 2
+ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$RESULT" # 4.040272
+shasum -a 256 "$RAM2_MNT/reference.mp4" "$RAM2_MNT/damaged.mp4" \
+    > "$T9/video-inputs-after.sha256"
+cmp "$T9/video-inputs-before.sha256" "$T9/video-inputs-after.sha256" \
+    && echo "INPUTS UNCHANGED"
+# после повторного запуска:
+ls -la "$T9/video-out/"        # damaged_recovered.mp4 + damaged_recovered_2.mp4
+shasum -a 256 "$T9/video-out/"*.mp4   # оба 47db820c…8c7fd — идентичны
+shasum -a 256 "$RAM2_MNT/reference.mp4" "$RAM2_MNT/damaged.mp4" \
+    > "$T9/video-inputs-after2.sha256"
+cmp "$T9/video-inputs-before.sha256" "$T9/video-inputs-after2.sha256" \
+    && echo "INPUTS STILL UNCHANGED"
+```
+
+Узкие проверки, повторённые сейчас (вывод актуален на момент коммита):
+
+```bash
+file reports/assets/TASK-009/deep-result-card.jpg \
+     reports/assets/TASK-009/video-result-card.jpg
+# обе: JPEG image data … 900x632 (расширения .jpg соответствуют формату)
+git diff --check 3c2fcb4ece0787aa81db0d25cb724e0da7cb3571..HEAD   # пусто
+git status --short   # чисто, кроме outputs/… и нетрекаемого .mimosa/ (см. уборку)
+```
 
 ## Не проверено
 
@@ -142,7 +225,18 @@ release-пересборка после правок не требуются; п
   контрольные суммы), `/tmp/t9build.log`, `/tmp/t9appout.txt`.
 - RAM-диски: оба отсоединены по проверенным устройствам этого прогона
   (`disk4`/`disk6` — принадлежность доказана plist-снимками до/после);
-  `mount` не содержит `T009*`. Общий `work/`, `dist/`, `outputs/` (включая
-  пользовательскую папку) и системные кэши не тронуты.
+  `mount` не содержит `T009*`. `dist/`, `outputs/` (включая пользовательскую
+  папку) и системные кэши не тронуты.
+- Уборка по замечанию ревью: удалён кэш `work/swift-build` — принадлежность
+  TASK-009 подтверждена тем, что (а) запись `work/` целиком удалялась при
+  уборке TASK-008 (см. `reports/TASK-008.md`), поэтому каталог мог быть
+  создан только после неё; (б) `work/swift-build` датирован 2026-09-25 04:19
+  — временем вызова `build-app.sh` этой сессии (для которой `work/swift-build`
+  — путь кэша по умолчанию в `Scripts/build-app.sh`, строка
+  `cache_dir="${BUILD_CACHE_DIR:-$project_dir/work/swift-build}"`); (в) на
+  момент удаления ни один процесс не держал файлы (`pgrep swift/clang` пуст,
+  `lsof +D work/swift-build` пуст). Каталог `work/` оставлен пустым.
+- Нетрекаемый каталог `.mimosa/` появился в корне проекта вне этой задачи
+  (этим прогоном не создавался); он не добавлялся в коммит и не удалялся.
 - Сохранены: скриншоты `reports/assets/TASK-009/` (только синтетические
   данные), артефакты `dist/TASK-008/` без изменений.
