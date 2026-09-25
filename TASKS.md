@@ -14,6 +14,6 @@
 | TASK-006 | DONE | `glm/task-006-cli-video-repair` | Общий RecoveryCore для untrunc и CLI восстановления видео с отменой; принят коммит `1e258dfbab52f797df517cad5178069caf9bc9ff` |
 | TASK-007 | DONE | `glm/task-007-swiftui-core-parity` | GUI использует общий Core и защищает находки при подмене источника; принят коммит `7f1a2fd7ce2fb8f2d5a117ad9ff83aa9505e1ed0` |
 | TASK-008 | DONE | `glm/task-008-regression-package` | Синтетическая и GUI-регрессия, лабораторные DMG/ZIP 0.8.1; принят коммит `f192ceb6bbecb8a8cf4b4e23a9c7e44513351415` |
-| TASK-009 | TODO | `glm/task-009-gui-deep-video-acceptance` | Сквозная GUI-приёмка глубокого поиска и исправления видео на синтетических данных, без физических накопителей и системной авторизации |
+| TASK-009 | REVIEW | `glm/task-009-gui-deep-video-acceptance` | Сквозная GUI-приёмка глубокого поиска и исправления видео на синтетических данных, без физических накопителей и системной авторизации |
 
 Статус `DONE` выставляет только Codex после независимого ревью коммита.
