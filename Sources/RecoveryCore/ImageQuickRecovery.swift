@@ -423,7 +423,13 @@ public final class ImageQuickRecovery: @unchecked Sendable {
             defer { try? outputHandle.close() }
 
             emit("[\(index + 1)/\(candidates.count)] \(candidate.path)\n", onOutput)
+            // Тип ФС определён fls при скане и передаётся icat явно:
+            // автоопределение TSK не работает для части образов (например,
+            // маленьких FAT32 без таблицы разделов).
             var arguments = ["-r"]
+            if !candidate.filesystemType.isEmpty {
+                arguments += ["-f", candidate.filesystemType]
+            }
             if candidate.partitionOffset > 0 {
                 arguments += ["-o", String(candidate.partitionOffset)]
             }

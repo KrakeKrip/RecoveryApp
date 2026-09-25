@@ -13,6 +13,6 @@
 | TASK-005 | DONE | `glm/task-005-cli-photorec` | CLI глубокого PhotoRec с прогрессом и отменой; принят коммит `118efde68c89ef6d7f6eead8d2ca0282feefee5f` |
 | TASK-006 | DONE | `glm/task-006-cli-video-repair` | Общий RecoveryCore для untrunc и CLI восстановления видео с отменой; принят коммит `1e258dfbab52f797df517cad5178069caf9bc9ff` |
 | TASK-007 | DONE | `glm/task-007-swiftui-core-parity` | GUI использует общий Core и защищает находки при подмене источника; принят коммит `7f1a2fd7ce2fb8f2d5a117ad9ff83aa9505e1ed0` |
-| TASK-008 | IN PROGRESS | `glm/task-008-regression-package` | Полная синтетическая и GUI-регрессия, проверенная лабораторная упаковка 0.8.1 |
+| TASK-008 | REVIEW | `glm/task-008-regression-package` | Полная синтетическая и GUI-регрессия, проверенная лабораторная упаковка 0.8.1 |
 
 Статус `DONE` выставляет только Codex после независимого ревью коммита.

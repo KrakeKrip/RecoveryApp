@@ -10,7 +10,7 @@ stage_project="$stage_dir/RecoveryApp"
 trap 'rm -rf "$stage_dir"' EXIT
 
 mkdir -p "$stage_project/outputs"
-for item in AGENTS.md Package.swift README.md STATUS.md LICENSE GLM Sources Tests Scripts Packaging docs ThirdParty; do
+for item in AGENTS.md Package.swift README.md STATUS.md LICENSE Sources Tests Scripts Packaging docs ThirdParty; do
     COPYFILE_DISABLE=1 ditto --norsrc --noextattr \
         "$project_dir/$item" "$stage_project/$item"
 done

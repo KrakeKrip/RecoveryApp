@@ -134,6 +134,29 @@ cmp "$test_dir/originals/REPORT.TXT" "$test_dir/result/_EPORT.TXT"
 cmp "$test_dir/originals/EMPTY.TXT" "$test_dir/result/_MPTY.TXT"
 print "PASS: FAT32 файлы совпадают побайтно с эталоном"
 
+# 4b. Регрессия маленького образа: автоопределение TSK не работает для
+#     части FAT32-образов (mformat 32 МиБ), тип ФС из скана передаётся
+#     icat явно. Без исправления восстановление падает с ошибкой icat.
+small_image="$test_dir/fat32-small.img"
+mformat -i "$small_image" -C -F -v SMALLCLI -T 65536 ::
+mcopy -i "$small_image" "$test_dir/originals/RECOVERY.TXT" ::/RECOVERY.TXT
+mdel -i "$small_image" ::/RECOVERY.TXT
+mkdir -p "$test_dir/result-small"
+"$cli" quick recover --image "$small_image" --output "$test_dir/result-small" --all --json \
+    > "$test_dir/small.json" 2> "$test_dir/small.err"
+python3 - "$test_dir/small.json" <<'PY'
+import json, sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    report = json.load(handle)
+assert report["recoveredCount"] == 1, report
+assert report["items"][0]["status"] == "sizeMatches", report
+print("PASS: маленький FAT32-образ восстановлен с явным типом ФС")
+PY
+small_recovered="$(find "$test_dir/result-small" -type f -name '*.TXT' -print -quit)"
+test -n "$small_recovered"
+cmp "$test_dir/originals/RECOVERY.TXT" "$small_recovered"
+
 # 5. Повторный запуск не перезаписывает: новые имена _2, прежние файлы целы.
 "$cli" quick recover --image "$fat_image" --output "$test_dir/result" --all --json \
     > "$test_dir/fat32-recover-2.json"
