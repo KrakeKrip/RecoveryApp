@@ -54,9 +54,6 @@ struct DeletedFilesView: View {
         }
         .navigationTitle("Удалённые файлы")
         .task { await model.refreshDrives() }
-        .fileImporter(isPresented: $model.selectingOutput, allowedContentTypes: [.folder]) { result in
-            if case .success(let url) = result { model.selectOutputFolder(url) }
-        }
         .confirmationDialog(
             "Запустить глубокий поиск?",
             isPresented: $model.confirmingDeepRecovery,
@@ -145,7 +142,7 @@ struct DeletedFilesView: View {
                 .lineLimit(2)
                 .truncationMode(.middle)
             Button(model.outputFolderURL == nil ? "Выбрать папку…" : "Изменить папку…") {
-                model.selectingOutput = true
+                chooseOutputFolder()
             }
             .font(.caption)
             .disabled(model.isBusy)
@@ -383,6 +380,18 @@ struct DeletedFilesView: View {
         }
         guard let sourceSize, sourceSize > 0, available < sourceSize else { return nil }
         return "В папке результата свободно \(ByteCountFormatter.string(fromByteCount: available, countStyle: .file)), а размер источника — \(ByteCountFormatter.string(fromByteCount: sourceSize, countStyle: .file)). В худшем случае места может не хватить."
+    }
+
+    private func chooseOutputFolder() {
+        let panel = NSOpenPanel()
+        panel.title = "Выберите папку для восстановленных файлов"
+        panel.prompt = "Выбрать папку"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        model.selectOutputFolder(url)
     }
 
     private func chooseDiskImage() {
