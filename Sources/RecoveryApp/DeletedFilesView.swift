@@ -383,6 +383,7 @@ struct DeletedFilesView: View {
     }
 
     private func chooseOutputFolder() {
+        NSApp.activate()
         let panel = NSOpenPanel()
         panel.title = "Выберите папку для восстановленных файлов"
         panel.prompt = "Выбрать папку"
@@ -390,8 +391,31 @@ struct DeletedFilesView: View {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        model.selectOutputFolder(url)
+        panel.allowedContentTypes = []
+        // Не полагаемся на сохранённый macOS каталог предыдущего диалога:
+        // он может уже исчезнуть после уборки временных результатов.
+        let fileManager = FileManager.default
+        let preferredFolders: [URL?] = [
+            model.outputFolderURL,
+            fileManager.urls(for: .downloadsDirectory, in: .userDomainMask).first,
+            fileManager.homeDirectoryForCurrentUser
+        ]
+        panel.directoryURL = preferredFolders.compactMap { $0 }.first { url in
+            var isDirectory: ObjCBool = false
+            return fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory)
+                && isDirectory.boolValue
+        }
+        let acceptSelection: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let url = panel.url else { return }
+            model.selectOutputFolder(url)
+        }
+        if let window = NSApp.keyWindow ?? NSApp.windows.first(where: {
+            $0.isVisible && !($0 is NSPanel)
+        }) {
+            panel.beginSheetModal(for: window, completionHandler: acceptSelection)
+        } else {
+            panel.begin(completionHandler: acceptSelection)
+        }
     }
 
     private func chooseDiskImage() {
