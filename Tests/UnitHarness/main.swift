@@ -1499,6 +1499,361 @@ _ = try chainSessions.recovery(for: chainDriveA)
 check(chainFactoryCalls == chainFactoryAfterRecover + 1,
       "сессия сброшена после отказа защиты recoverSelected")
 
-print("PASS: \(checkCount) domain checks")
+// TASK-012: фильтры найденных файлов — категории, имя, размер, AND.
+
+private func candidateForFilter(
+    _ name: String,
+    expectedSize: Int64?,
+    id: String = ""
+) -> DeletedFileCandidate {
+    DeletedFileCandidate(
+        id: id.isEmpty ? name : id,
+        path: "SRC/" + name,
+        inode: "1",
+        partitionOffset: 0,
+        expectedSize: expectedSize
+    )
+}
+
+// Категории: верхний регистр расширения, без расширения, неизвестное.
+check(FindingsCategory.category(forDisplayName: "CARD.JPG") == .photo,
+      "верхний регистр расширения распознаётся")
+check(FindingsCategory.category(forDisplayName: "clip.MOV") == .video,
+      "видео-расширение распознаётся")
+check(FindingsCategory.category(forDisplayName: "note.PDF") == .document,
+      "документ-расширение распознаётся")
+check(FindingsCategory.category(forDisplayName: "БЕЗ_РАСШИРЕНИЯ") == .other,
+      "имя без расширения — «Другое»")
+check(FindingsCategory.category(forDisplayName: "photo.unknown") == .other,
+      "неизвестное расширение — «Другое»")
+check(FindingsCategory.category(forDisplayName: "архив.tar.gz") == .other,
+      "составное неизвестное расширение — «Другое»")
+
+let filterCandidates: [DeletedFileCandidate] = [
+    candidateForFilter("CARD.JPG", expectedSize: 100, id: "f1"),
+    candidateForFilter("CLIP.MOV", expectedSize: 2_000_000, id: "f2"),
+    candidateForFilter("ОТЧЁТ.pdf", expectedSize: 50, id: "f3"),
+    candidateForFilter("заметка.txt", expectedSize: 3, id: "f4"),
+    candidateForFilter("unknown.dat", expectedSize: 700, id: "f5"),
+    candidateForFilter("без_расширения", expectedSize: 5, id: "f6")
+]
+
+// Пустой фильтр не отсеивает ничего и не меняет порядок.
+let passAll = FindingsFilter().apply(to: filterCandidates)
+check(passAll.map(\.id) == filterCandidates.map(\.id),
+      "пустой фильтр сохраняет весь список и порядок")
+// Вход не изменяется фильтрацией.
+let before = filterCandidates
+_ = FindingsFilter(category: .photo).apply(to: filterCandidates)
+check(filterCandidates.map(\.id) == before.map(\.id), "входной массив не меняется")
+
+// Категории.
+check(FindingsFilter(category: .photo).apply(to: filterCandidates).map(\.id) == ["f1"],
+      "категория «Фото» оставляет только фото")
+check(FindingsFilter(category: .video).apply(to: filterCandidates).map(\.id) == ["f2"],
+      "категория «Видео» оставляет только видео")
+check(FindingsFilter(category: .document).apply(to: filterCandidates).map(\.id) == ["f3", "f4"],
+      "категория «Документы» оставляет только документы")
+check(FindingsFilter(category: .other).apply(to: filterCandidates).map(\.id) == ["f5", "f6"],
+      "категория «Другое» оставляет неизвестное и без расширения")
+
+// Поиск по имени: кириллица, регистр, пробелы, частичное вхождение.
+check(FindingsFilter(nameQuery: "отчёт").apply(to: filterCandidates).map(\.id) == ["f3"],
+      "кириллический запрос в нижнем регистре находит ОТЧЁТ")
+check(FindingsFilter(nameQuery: "  CARD  ").apply(to: filterCandidates).map(\.id) == ["f1"],
+      "пробелы по краям запроса убираются")
+check(FindingsFilter(nameQuery: "нсуществующ").apply(to: filterCandidates).isEmpty,
+      "запрос без вхождений даёт пустой список")
+
+// Размер (МБ): включительные границы, неизвестный размер исключается
+// активным порогом. 1 МБ = 1 000 000 байт.
+let sizeRange = FindingsSizeRange(minimumMB: 1, maximumMB: 2)
+check(sizeRange.byteRange?.lower == 1_000_000 && sizeRange.byteRange?.upper == 2_000_000,
+      "1 МБ = 1 000 000 байт")
+check(FindingsFilter(
+    category: .all,
+    nameQuery: "",
+    sizeRange: FindingsSizeRange(minimumMB: 1, maximumMB: 2)
+).apply(to: [
+    candidateForFilter("small.txt", expectedSize: 999_999, id: "s0"),
+    candidateForFilter("exact.txt", expectedSize: 1_000_000, id: "s1"),
+    candidateForFilter("mid.dat", expectedSize: 1_500_000, id: "s2"),
+    candidateForFilter("exact2.txt", expectedSize: 2_000_000, id: "s3"),
+    candidateForFilter("big.txt", expectedSize: 2_000_001, id: "s4"),
+    candidateForFilter("unknown.txt", expectedSize: nil, id: "s5")
+]).map(\.id) == ["s1", "s2", "s3"],
+      "включительные границы МБ, неизвестный размер исключён")
+// Только минимум: максимум не ограничивает.
+check(FindingsFilter(
+    sizeRange: FindingsSizeRange(minimumMB: 1, maximumMB: nil)
+).apply(to: [
+    candidateForFilter("tiny.txt", expectedSize: 10, id: "t0"),
+    candidateForFilter("ok.txt", expectedSize: 2_097_152, id: "t1")
+]).map(\.id) == ["t1"], "только минимум отсекает мелкие")
+
+// AND: категория + имя + размер.
+check(FindingsFilter(
+    category: .all,
+    nameQuery: "exact",
+    sizeRange: FindingsSizeRange(minimumMB: 1, maximumMB: 2)
+).apply(to: [
+    candidateForFilter("exact.txt", expectedSize: 1_000_000, id: "a1"),
+    candidateForFilter("other.txt", expectedSize: 1_000_000, id: "a2")
+]).map(\.id) == ["a1"], "AND категории, имени и размера")
+
+// Ошибки разбора порогов.
+func expectSizeError(_ min: String, _ max: String,
+                     _ expected: FindingsFilterError, _ message: String) {
+    switch FindingsSizeRange.parse(minimumText: min, maximumText: max) {
+    case .failure(let error):
+        check(error == expected, message + ": получено \(error)")
+    case .success:
+        check(false, message + ": ошибке не было")
+    }
+}
+expectSizeError("abc", "", .thresholdNotANumber("минимум"), "нечисловой минимум отклоняется")
+expectSizeError("", "-5", .thresholdNegative("максимум"), "отрицательный максимум отклоняется")
+expectSizeError("99999999999999999999", "", .thresholdOverflow("минимум"),
+                "переполнение минимума отклоняется")
+expectSizeError("5", "2", .minAboveMax(minimum: 5, maximum: 2), "минимум больше максимума отклоняется")
+// Пробельные поля порогов обрезаются и означают «ограничение отключено».
+switch FindingsSizeRange.parse(minimumText: "  ", maximumText: "  ") {
+case .success(let range):
+    check(!range.isActive, "пробельные поля порогов отключают ограничения")
+case .failure:
+    check(false, "пробельные поля порогов не должны давать ошибку")
+}
+
+// P1: безопасная граница и переполнение порогов (МБ).
+let maxSafe = FindingsSizeRange.maxSafeThresholdMB
+check(maxSafe == Int(Int64.max / 1_000_000), "maxSafeThresholdMB = Int64.max / 1 000 000")
+let safeRange = FindingsSizeRange(minimumMB: maxSafe, maximumMB: nil)
+check(safeRange.byteRange?.lower == Int64(maxSafe) * 1_000_000,
+      "безопасная граница конвертируется без переполнения")
+check(FindingsSizeRange(minimumMB: nil, maximumMB: maxSafe).byteRange?.upper
+        == Int64(maxSafe) * 1_000_000,
+      "безопасный максимум на верхней границе конвертируется без переполнения")
+switch FindingsSizeRange.parse(minimumText: String(maxSafe), maximumText: "") {
+case .success(let boundary):
+    check(boundary.byteRange?.lower == Int64(maxSafe) * 1_000_000,
+          "порог ровно на безопасной границе разбирается")
+case .failure:
+    check(false, "порог ровно на безопасной границе не должен давать ошибку")
+}
+// Граница + 1: parse даёт overflow, публичный byteRange — nil (без краха).
+expectSizeError(String(maxSafe + 1), "", .thresholdOverflow("минимум"),
+                "порог выше безопасной границы отклоняется")
+check(FindingsSizeRange(minimumMB: maxSafe + 1, maximumMB: nil).byteRange == nil,
+      "прямой инициализатор недопустимого диапазона даёт nil вместо переполнения")
+check(FindingsSizeRange(minimumMB: nil, maximumMB: maxSafe + 1).byteRange == nil,
+      "недопустимый максимум даёт nil вместо переполнения")
+check(FindingsSizeRange(minimumMB: Int.max, maximumMB: Int.max).byteRange == nil,
+      "Int.max в порогах безопасен (byteRange == nil)")
+expectSizeError(String(Int.max), "", .thresholdOverflow("минимум"),
+                "Int.max отклоняется на разборе")
+// Непредставимый прямой диапазон отличим от отключённого и через
+// FindingsFilter не расширяет выдачу, а опустошает её.
+check(FindingsSizeRange(minimumMB: maxSafe + 1, maximumMB: nil).isUnrepresentable,
+      "активный непредставимый диапазон распознан (isUnrepresentable)")
+check(!FindingsSizeRange(minimumMB: nil, maximumMB: nil).isUnrepresentable,
+      "отключённые ограничения не считаются непредставимыми")
+check(FindingsFilter(
+    sizeRange: FindingsSizeRange(minimumMB: maxSafe + 1, maximumMB: nil)
+).apply(to: filterCandidates).isEmpty,
+      "непредставимый минимум не расширяет выдачу (пусто)")
+check(FindingsFilter(
+    sizeRange: FindingsSizeRange(minimumMB: nil, maximumMB: maxSafe + 1)
+).apply(to: filterCandidates).isEmpty,
+      "непредставимый максимум не расширяет выдачу (пусто)")
+
+// TASK-012: безопасная семантика выбора на production-модели.
+let model = DeletedFilesViewModel(
+    driveSnapshot: { [try makeSyntheticDrive(identifier: "disk7", name: "T012 USB", size: 128_000_000_000)] },
+    executor: DeletedFilesExecutor(physicalSessions: PhysicalQuickSessionCoordinator(makeRecovery: {
+        PhysicalQuickRecovery(helper: URL(fileURLWithPath: "/nonexistent/helper"), launcher: nil)
+    }))
+)
+await model.refreshDrives()
+model.selectDrive(id: "disk7")
+model.recordScannedSource(try makeSyntheticDrive(identifier: "disk7", name: "T012 USB", size: 128_000_000_000))
+model.candidates = filterCandidates
+model.selection = Set(filterCandidates.map(\.id))
+model.state = .scanFinished
+model.outputFolderURL = root.appendingPathComponent("t012-out", isDirectory: true)
+check(model.canRecover, "с полностью выбранным списком восстановление доступно")
+
+// Фильтр скрывает часть записей: selection пересекается с видимыми.
+model.selectCategory(.document)
+check(model.visibleCandidates.map(\.id) == ["f3", "f4"],
+      "категория «Документы» показывает только документы")
+check(model.selection == ["f3", "f4"],
+      "скрытые ID исключены из selection при смене фильтра")
+// Select-all выбирает только видимые.
+model.selectAllVisible()
+check(model.selection == Set(["f3", "f4"]), "select-all выбирает только видимые")
+
+// Валидный размерный фильтр 0..1 МБ: скрывает f2 (2 МБ), остальные ≤ 700 Б.
+model.selectCategory(.all)
+model.setNameQuery("")
+model.setSizeThresholds(minimumText: "0", maximumText: "1")
+check(model.visibleCandidates.map(\.id) == ["f1", "f3", "f4", "f5", "f6"],
+      "применённый диапазон 0..1 МБ скрывает f2: \(model.visibleCandidates.map(\.id))")
+
+// Ошибка порогов: восстановление блокируется; appliedSizeRange (0..1 МБ)
+// сохраняется — проверка точными ID, а не тавтологией.
+model.setSizeThresholds(minimumText: "abc", maximumText: "1")
+check(model.hasSizeFilterError, "ошибка порогов зафиксирована")
+check(model.canRecover == false, "ошибка порогов блокирует восстановление")
+check(model.visibleCandidates.map(\.id) == ["f1", "f3", "f4", "f5", "f6"],
+      "ошибка порогов не снимает последний валидный applied фильтр: \(model.visibleCandidates.map(\.id))")
+
+// Во время ошибки остальные фильтры продолжают работать поверх applied.
+model.selectCategory(.video)
+check(model.visibleCandidates.isEmpty,
+      "во время ошибки «Видео» + applied 0..1 МБ скрывают f2 (2 МБ)")
+check(model.selection.isEmpty, "нет видимых — selection пуст")
+model.selectCategory(.all)
+model.setNameQuery("CARD")
+check(model.visibleCandidates.map(\.id) == ["f1"],
+      "во время ошибки имя + applied 0..1 МБ применяются: \(model.visibleCandidates.map(\.id))")
+
+// Сброс единственного неверного поля снимает ошибку и применяет новый диапазон.
+model.setSizeThresholds(minimumText: "", maximumText: "1")
+check(model.hasSizeFilterError == false, "очистка единственного неверного поля снимает ошибку")
+check(model.visibleCandidates.map(\.id) == ["f1"],
+      "после исправления действуют max=1 МБ и имя CARD: \(model.visibleCandidates.map(\.id))")
+model.setNameQuery("")
+check(model.visibleCandidates.map(\.id) == ["f1", "f3", "f4", "f5", "f6"],
+      "после исправления max=1 МБ действует на весь список")
+model.setSizeThresholds(minimumText: "", maximumText: "")
+model.selection = Set(model.candidates.map(\.id))
+check(model.visibleCandidates.count == model.candidates.count && model.canRecover,
+      "сброс обоих порогов возвращает полный список и восстановление")
+
+// Пустой фильтр → единственное неверное поле: сброс доступен без
+// предварительного валидного диапазона (регрессия third-pass ревью).
+check(model.isFilterActive == false && model.hasAnyFilterInput == false,
+      "исходно ни применённого фильтра, ни ввода нет")
+model.setSizeThresholds(minimumText: "abc", maximumText: "")
+check(model.hasSizeFilterError, "единственное неверное поле даёт ошибку")
+check(model.hasAnyFilterInput,
+      "hasAnyFilterInput видит ошибку без применённого фильтра")
+check(model.isFilterActive == false,
+      "isFilterActive не считает невалидный ввод применённым фильтром")
+model.resetFilters()
+check(model.hasSizeFilterError == false
+      && model.minimumSizeText.isEmpty && model.maximumSizeText.isEmpty
+      && model.hasAnyFilterInput == false,
+      "resetFilters очищает ошибку и поля единственного неверного ввода")
+
+// Сброс фильтров возвращает полный список.
+model.selectCategory(.video)
+check(model.visibleCandidates.count < model.candidates.count, "категория скрыла часть находок")
+model.resetFilters()
+check(model.visibleCandidates.count == model.candidates.count && model.isFilterActive == false,
+      "сброс фильтров возвращает полный список")
+
+// Смена источника сбрасывает фильтры и selection.
+model.selectCategory(.photo)
+model.setNameQuery("CARD")
+model.selectDrive(id: "disk9")
+check(model.isFilterActive == false && model.selection.isEmpty && model.candidates.isEmpty,
+      "смена источника сбрасывает фильтры, selection и находки")
+
+// Production-модель: в recovery передаётся пересечение видимых и выбранных,
+// а ошибка порогов не запускает executor. icat подменён шелл-обёрткой,
+// записывающей фактические вызовы; helper и launcher несуществующие —
+// физический диск и authopen недостижимы.
+setenv("RECOVERYAPP_MMLS_PATH", "/Users/atlhnv/RecoveryApp/ThirdParty/sleuthkit/bin/arm64/mmls", 1)
+setenv("RECOVERYAPP_FLS_PATH", "/Users/atlhnv/RecoveryApp/ThirdParty/sleuthkit/bin/arm64/fls", 1)
+let recDir = root.appendingPathComponent("t012-rec", isDirectory: true)
+try FileManager.default.createDirectory(at: recDir, withIntermediateDirectories: true)
+let recImage = recDir.appendingPathComponent("synthetic-recording.img")
+try Data("RECOVERYAPP-T012-SYNTHETIC-IMAGE\n".utf8).write(to: recImage)
+let icatShim = recDir.appendingPathComponent("icat-shim")
+let icatShimScript = """
+#!/bin/sh
+printf '%s\n' "$@" >> "\(recDir.path)/icat-args.txt"
+printf 'RECOVERYAPP-T012-SYNTHETIC\n'
+"""
+try icatShimScript.write(to: icatShim, atomically: true, encoding: .utf8)
+try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: icatShim.path)
+setenv("RECOVERYAPP_ICAT_PATH", icatShim.path, 1)
+// launcher-заглушка: прозрачный запуск инструмента с журналом вызовов.
+// Восстановление образа не имеет права обращаться к authopen или /dev/* —
+// журнал обязан содержать только вызовы icat-shim.
+let launcherShim = recDir.appendingPathComponent("launcher-shim")
+let launcherShimScript = """
+#!/bin/sh
+printf '%s\n' "$@" >> "\(recDir.path)/launcher-args.txt"
+tool="$1"
+shift
+exec "$tool" "$@"
+"""
+try launcherShimScript.write(to: launcherShim, atomically: true, encoding: .utf8)
+try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: launcherShim.path)
+setenv("RECOVERYAPP_TOOL_LAUNCHER_PATH", launcherShim.path, 1)
+
+let recModel = DeletedFilesViewModel(
+    driveSnapshot: { [try makeSyntheticDrive(identifier: "disk8", name: "T012 REC", size: 128_000_000_000)] },
+    executor: DeletedFilesExecutor(physicalSessions: PhysicalQuickSessionCoordinator(makeRecovery: {
+        PhysicalQuickRecovery(helper: URL(fileURLWithPath: "/nonexistent/helper"), launcher: nil)
+    }))
+)
+recModel.selectImage(recImage)
+let recOut = recDir.appendingPathComponent("rec-out", isDirectory: true)
+try FileManager.default.createDirectory(at: recOut, withIntermediateDirectories: true)
+recModel.outputFolderURL = recOut
+recModel.candidates = [
+    DeletedFileCandidate(id: "4:ФОТО.JPG", path: "ФОТО.JPG", inode: "4", partitionOffset: 0, filesystemType: "fat32", expectedSize: 3_000_000),
+    DeletedFileCandidate(id: "5:ВИДЕО.MOV", path: "ВИДЕО.MOV", inode: "5", partitionOffset: 0, filesystemType: "fat32", expectedSize: 2_000_000),
+    DeletedFileCandidate(id: "6:ОТЧЁТ.PDF", path: "ОТЧЁТ.PDF", inode: "6", partitionOffset: 0, filesystemType: "fat32", expectedSize: 500_000),
+    DeletedFileCandidate(id: "7:ЗАМЕТКА.TXT", path: "ЗАМЕТКА.TXT", inode: "7", partitionOffset: 0, filesystemType: "fat32", expectedSize: 100)
+]
+recModel.selection = Set(recModel.candidates.map(\.id))
+recModel.state = .scanFinished
+
+// Фильтр «Документы»: видимы pdf+txt — восстанавливаются только они.
+recModel.selectCategory(.document)
+check(recModel.canRecover, "восстановление доступно для видимых выбранных")
+recModel.recoverSelected()
+var recDone = false
+for _ in 0..<200 {
+    if case .succeeded = recModel.state { recDone = true }
+    if recDone || recModel.state != .recovering { break }
+    try await Task.sleep(for: .milliseconds(25))
+}
+check(recDone, "восстановление завершилось успехом на icat-shim")
+let icatArgsPath = recDir.appendingPathComponent("icat-args.txt")
+var icatArgs = (try? String(contentsOf: icatArgsPath, encoding: .utf8)) ?? ""
+check(icatArgs.split(separator: "\n").contains("6"),
+      "icat вызван для inode 6 (видимый ОТЧЁТ.PDF)")
+check(icatArgs.split(separator: "\n").contains("7"),
+      "icat вызван для inode 7 (видимая ЗАМЕТКА.TXT)")
+check(!icatArgs.split(separator: "\n").contains("4"),
+      "icat НЕ вызван для скрытого inode 4 (ФОТО.JPG)")
+check(!icatArgs.split(separator: "\n").contains("5"),
+      "icat НЕ вызван для скрытого inode 5 (ВИДЕО.MOV)")
+check(!FileManager.default.fileExists(atPath: recDir.appendingPathComponent("launcher-args.txt").path) || {
+    let launcherLog = (try? String(contentsOf: recDir.appendingPathComponent("launcher-args.txt"), encoding: .utf8)) ?? ""
+    return !launcherLog.contains("authopen") && !launcherLog.contains("/dev/")
+}(), "восстановление образа не обращается к authopen и /dev/*")
+
+// Ошибка порогов: прямой вызов recoverSelected не создаёт task, не меняет
+// состояние и не запускает executor.
+recModel.selectCategory(.all)
+recModel.selection = Set(recModel.candidates.map(\.id))
+recModel.setSizeThresholds(minimumText: "abc", maximumText: "")
+check(recModel.hasSizeFilterError, "ошибка порогов зафиксирована")
+check(recModel.canRecover == false, "canRecover блокирован ошибкой порогов")
+let stateBefore = recModel.state
+let argsBeforeError = (try? String(contentsOf: icatArgsPath, encoding: .utf8)) ?? ""
+recModel.recoverSelected()
+check(recModel.state == stateBefore,
+      "recoverSelected при ошибке порогов не создаёт task и не запускает executor")
+icatArgs = (try? String(contentsOf: icatArgsPath, encoding: .utf8)) ?? ""
+check(icatArgs == argsBeforeError, "icat не вызывался при ошибке порогов")
+unsetenv("RECOVERYAPP_ICAT_PATH")
+unsetenv("RECOVERYAPP_MMLS_PATH")
 
 print("PASS: \(checkCount) domain checks")

@@ -233,17 +233,143 @@ struct DeletedFilesView: View {
                 .frame(minHeight: 170)
                 deepSearchOption
             } else {
-                findingsTable
-                HStack {
-                    Text("Выбрано: \(model.selection.count) из \(model.candidates.count)")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Восстановить выбранные") { model.recoverSelected() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!model.canRecover)
+                findingsFilterBar
+                if model.visibleCandidates.isEmpty {
+                    ContentUnavailableView {
+                        Label("По заданным фильтрам ничего не найдено", systemImage: "line.3.horizontal.decrease.circle")
+                    } description: {
+                        Text("Измените или сбросьте фильтры, чтобы увидеть все \(model.candidates.count) найденных файлов.")
+                    }
+                    .frame(minHeight: 170)
+                    Button("Сбросить фильтры") { model.resetFilters() }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    findingsTable
+                    HStack {
+                        Text(filterSummaryText)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Выбрать все показанные") { model.selectAllVisible() }
+                            .disabled(model.selection.count == model.visibleCandidates.count)
+                        Button("Восстановить выбранные") { model.recoverSelected() }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(!model.canRecover)
+                    }
                 }
             }
         }
+    }
+
+    private var filterSummaryText: String {
+        let shown = model.visibleCandidates.count
+        let total = model.candidates.count
+        let base = "Показано: \(shown) из \(total). Выбрано: \(model.selection.count)."
+        if model.hasSizeFilterError {
+            return base + " Проверьте размерные пороги: восстановление заблокировано."
+        }
+        return base
+    }
+
+    private var findingsFilterBar: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Адаптивная раскладка: на минимальной ширине окна (860 pt)
+            // одна строка не помещается в отступы карточки — сегменты
+            // «Все…Другое» сжимаются и выпадают за край. ViewThatFits
+            // сравнивает естественную ширину одной строки с доступной
+            // (fixedSize нужен для честного замера: frame(maxWidth:) и
+            // Spacer делают кандидата «резиновым», и он считается
+            // помещающимся при любой ширине); если строка не входит,
+            // поиск и сброс переносятся на отдельную строку. На широком
+            // окне остаётся одна строка.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) {
+                    categoryPicker
+                    nameSearchField
+                    resetFiltersButton
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 10) {
+                    categoryPicker
+                    HStack(spacing: 14) {
+                        nameSearchField
+                            .frame(maxWidth: 320)
+                        Spacer(minLength: 8)
+                        resetFiltersButton
+                    }
+                }
+            }
+
+            DisclosureGroup("Размер") {
+                HStack(spacing: 10) {
+                    TextField("Минимум, МБ", text: Binding(
+                        get: { model.minimumSizeText },
+                        set: { model.setSizeThresholds(minimumText: $0, maximumText: model.maximumSizeText) }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 150)
+                    Text("…")
+                        .foregroundStyle(.secondary)
+                    TextField("Максимум, МБ", text: Binding(
+                        get: { model.maximumSizeText },
+                        set: { model.setSizeThresholds(minimumText: model.minimumSizeText, maximumText: $0) }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 150)
+                    Text("МБ · включительно")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                }
+                if let error = model.sizeFilterErrorMessage {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+                if model.appliedSizeActive {
+                    Text("Файлы с неизвестным размером скрыты активным порогом: размер по метаданным неизвестен, соответствие порогу не доказано.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.subheadline)
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.65), in: RoundedRectangle(cornerRadius: 10))
+        .disabled(model.isBusy)
+    }
+
+    private var categoryPicker: some View {
+        Picker("Тип", selection: Binding(
+            get: { model.selectedCategory },
+            set: { model.selectCategory($0) }
+        )) {
+            ForEach(Array(FindingsCategory.allCases), id: \.rawValue) { category in
+                Text(category.rawValue).tag(category)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityLabel("Тип находок")
+    }
+
+    private var nameSearchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Поиск по имени", text: Binding(
+                get: { model.nameQuery },
+                set: { model.setNameQuery($0) }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .accessibilityLabel("Поиск по имени файла")
+        }
+    }
+
+    private var resetFiltersButton: some View {
+        Button("Сбросить фильтры") { model.resetFilters() }
+            // Доступность по введённому вводу/ошибке, а не по применённому
+            // фильтру: единственное неверное поле должно сбрасываться
+            // одной кнопкой даже без валидного применённого диапазона.
+            .disabled(!model.hasAnyFilterInput)
     }
 
     private var activityPanel: some View {
@@ -295,7 +421,7 @@ struct DeletedFilesView: View {
     }
 
     private var findingsTable: some View {
-        Table(model.candidates, selection: $model.selection) {
+        Table(model.visibleCandidates, selection: $model.selection) {
             TableColumn("Файл") { item in
                 Text(item.displayName).lineLimit(1)
             }

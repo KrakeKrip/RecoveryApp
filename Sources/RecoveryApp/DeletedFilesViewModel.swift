@@ -26,6 +26,18 @@ final class DeletedFilesViewModel: ObservableObject {
     @Published var candidates: [DeletedFileCandidate] = []
     @Published var selection: Set<DeletedFileCandidate.ID> = []
     @Published var state: State = .ready
+    // Фильтры находок: категория, поиск по имени и размерные пороги.
+    // Ошибка валидации порогов хранится отдельно — ошибочный запрос не
+    // применяется, восстановление блокируется до исправления или сброса.
+    @Published var selectedCategory: FindingsCategory = .all
+    @Published var nameQuery = ""
+    @Published var minimumSizeText = ""
+    @Published var maximumSizeText = ""
+    /// Последний валидный применённый диапазон размера. Ошибка ввода его
+    /// не снимает: выдача остаётся отфильтрованной по последнему валидному
+    /// диапазону, восстановление блокируется до исправления/сброса.
+    @Published private(set) var appliedSizeRange: FindingsSizeRange?
+    @Published private(set) var sizeFilterError: FindingsFilterError?
     @Published var log = ""
     @Published var elapsed: TimeInterval = 0
     @Published var selectingOutput = false
@@ -111,9 +123,7 @@ final class DeletedFilesViewModel: ObservableObject {
         (selectedDrive != nil || imageURL != nil) && !isBusy
     }
 
-    var canRecover: Bool {
-        (selectedDrive != nil || imageURL != nil) && outputFolderURL != nil && !selection.isEmpty && !isBusy
-    }
+
 
     var canDeepRecover: Bool {
         (selectedDrive != nil || imageURL != nil) && outputFolderURL != nil && !isBusy
@@ -136,6 +146,122 @@ final class DeletedFilesViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Фильтры находок (TASK-012)
+
+    var hasSizeFilterError: Bool {
+        sizeFilterError != nil
+    }
+
+    var sizeFilterErrorMessage: String? {
+        sizeFilterError?.localizedDescription
+    }
+
+    /// Ошибочный размерный запрос (не число, отрицательный, переполнение,
+    /// минимум больше максимума): восстановление блокируется до исправления
+    /// или сброса порогов.
+    var sizeFilterBlocksRecovery: Bool {
+        hasSizeFilterError
+    }
+
+    var canRecover: Bool {
+        (selectedDrive != nil || imageURL != nil) && outputFolderURL != nil
+            && !visibleSelectedCandidates.isEmpty && !isBusy && !sizeFilterBlocksRecovery
+    }
+
+    /// Отфильтрованные находки: исходный массив не меняется, порядок
+    /// сохраняется; при применённом пороге неизвестный размер исключается.
+    var visibleCandidates: [DeletedFileCandidate] {
+        var filter = FindingsFilter(category: selectedCategory, nameQuery: nameQuery)
+        if let applied = appliedSizeRange {
+            filter = FindingsFilter(
+                category: selectedCategory,
+                nameQuery: nameQuery,
+                sizeRange: applied
+            )
+        }
+        return filter.apply(to: candidates)
+    }
+
+    var isFilterActive: Bool {
+        selectedCategory != .all || !nameQuery.isEmpty || appliedSizeRange?.isActive == true
+    }
+
+    /// Есть ли введённые значения фильтра или ошибка порогов: управляет
+    /// доступностью кнопки «Сбросить фильтры» даже при невалидном вводе.
+    var hasAnyFilterInput: Bool {
+        selectedCategory != .all || !nameQuery.isEmpty
+            || !minimumSizeText.trimmingCharacters(in: .whitespaces).isEmpty
+            || !maximumSizeText.trimmingCharacters(in: .whitespaces).isEmpty
+            || sizeFilterError != nil
+    }
+
+    /// Активен ли применённый размерный порог: тогда находки с неизвестным
+    /// размером скрыты, и об этом сообщается рядом с фильтром.
+    var appliedSizeActive: Bool {
+        appliedSizeRange?.isActive == true
+    }
+
+    func selectCategory(_ category: FindingsCategory) {
+        selectedCategory = category
+        restrictSelectionToVisible()
+    }
+
+    func setNameQuery(_ query: String) {
+        nameQuery = query
+        restrictSelectionToVisible()
+    }
+
+    func setSizeThresholds(minimumText: String, maximumText: String) {
+        minimumSizeText = minimumText
+        maximumSizeText = maximumText
+        switch FindingsSizeRange.parse(minimumText: minimumText, maximumText: maximumText) {
+        case .success(let range):
+            // Валидный запрос применяется; ошибка снимается.
+            appliedSizeRange = range
+            sizeFilterError = nil
+            restrictSelectionToVisible()
+        case .failure(let error):
+            // Ошибочный запрос не применяется: последний валидный диапазон
+            // остаётся applied, восстановление блокируется.
+            sizeFilterError = error
+        }
+    }
+
+    /// Сброс всех фильтров, включая невалидный ввод; выбор не трогается —
+    /// пользователь возвращается к полному списку находок текущего скана.
+    func resetFilters() {
+        selectedCategory = .all
+        nameQuery = ""
+        minimumSizeText = ""
+        maximumSizeText = ""
+        appliedSizeRange = nil
+        sizeFilterError = nil
+        // Выбор не пересекаем: без фильтров все находки видимы.
+    }
+
+    /// После изменения фильтров выбранными остаются только видимые записи:
+    /// пересечение текущего выбора с видимыми ID. Скрытые из selection
+    /// исключаются — восстановление не получает скрытое.
+    private func restrictSelectionToVisible() {
+        let visible = Set(visibleCandidates.map(\.id))
+        selection = selection.intersection(visible)
+    }
+
+    /// «Выбрать все»: только видимые записи.
+    func selectAllVisible() {
+        selection = Set(visibleCandidates.map(\.id))
+    }
+
+    /// Полный сброс фильтров (при смене источника или новом скане).
+    private func resetFiltersState() {
+        selectedCategory = .all
+        nameQuery = ""
+        minimumSizeText = ""
+        maximumSizeText = ""
+        appliedSizeRange = nil
+        sizeFilterError = nil
+    }
+
     func selectImage(_ url: URL) {
         let supportedExtensions = Set(["img", "raw", "dd", "dmg"])
         guard supportedExtensions.contains(url.pathExtension.lowercased()) else {
@@ -149,6 +275,7 @@ final class DeletedFilesViewModel: ObservableObject {
         imageURL = url
         candidates = []
         selection = []
+        resetFiltersState()
         state = .ready
         log = ""
         executor.resetPhysicalSession()
@@ -160,6 +287,7 @@ final class DeletedFilesViewModel: ObservableObject {
         }
         selectedDriveID = id
         if id != nil { imageURL = nil }
+        resetFiltersState()
         resetResults()
         if let outputFolderURL, let drive = selectedDrive, drive.contains(outputFolderURL) {
             self.outputFolderURL = nil
@@ -233,6 +361,7 @@ final class DeletedFilesViewModel: ObservableObject {
         state = .scanning
         candidates = []
         selection = []
+        resetFiltersState()
         log = drive.map { "Накопитель будет открыт только для чтения: \($0.rawDevicePath)\n" }
             ?? "Образ открыт только для чтения: \(imageURL!.path)\n"
         startTimer()
@@ -269,12 +398,31 @@ final class DeletedFilesViewModel: ObservableObject {
         }
     }
 
+    /// Видимые и одновременно выбранные кандидаты — ровно то, что уйдёт в
+    /// восстановление.
+    var visibleSelectedCandidates: [DeletedFileCandidate] {
+        let visibleIDs = Set(visibleCandidates.map(\.id))
+        return candidates.filter { selection.contains($0.id) && visibleIDs.contains($0.id) }
+    }
+
     func recoverSelected() {
         guard let outputFolderURL else { return }
         let drive = selectedDrive
         let imageURL = imageURL
         guard drive != nil || imageURL != nil else { return }
-        let chosen = candidates.filter { selection.contains($0.id) }
+        // Защита операции (TASK-012 ревью): при ошибке порогов, во время
+        // операции или без видимого выбранного набора task не создаётся,
+        // executor не запускается, авторизация не запрашивается.
+        guard !sizeFilterBlocksRecovery else {
+            log.append("Размерные пороги содержат ошибку: исправьте или сбросьте фильтры. Восстановление заблокировано.\n")
+            return
+        }
+        guard !isBusy else { return }
+        let chosen = visibleSelectedCandidates
+        guard !chosen.isEmpty else {
+            log.append("Нет видимых выбранных файлов для восстановления.\n")
+            return
+        }
         state = .recovering
         log.append("Восстановление выбранных файлов: \(chosen.count).\n")
         startTimer()
