@@ -1,7 +1,9 @@
 #!/bin/zsh
 set -euo pipefail
 
-project_dir="${0:A:h:h}"
+# SOURCE_PROJECT_DIR позволяет прогнать упаковку на синтетическом проекте
+# (регрессионный тест исключений); по умолчанию — репозиторий.
+project_dir="${SOURCE_PROJECT_DIR:-${0:A:h:h}}"
 output_dir="${OUTPUT_DIR:-$project_dir/outputs}"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$project_dir/Packaging/Info.plist")"
 archive_name="${SOURCE_ARCHIVE_NAME:-RecoveryApp-source-v${version}-lab.zip}"
@@ -24,6 +26,14 @@ for archive in \
 done
 
 find "$stage_project" -name .DS_Store -delete
+# Кэши Python (BuildTools) и другие артефакты выполнения в исходники не входят.
+find "$stage_project" -name "__pycache__" -type d -prune -exec rm -rf {} +
+find "$stage_project" -name "*.pyc" -delete
+# Служебные каталоги И файлы VCS/защиты не упаковываются на любой глубине:
+# git worktree/submodule оставляет обычный файл `.git` с путём к служебному
+# дереву, поэтому фильтр — по имени без `-type d`.
+find "$stage_project" -name .git -prune -exec rm -rf {} +
+find "$stage_project" -name .mimosa -prune -exec rm -rf {} +
 find "$stage_project" -exec touch -h -t 202001010000 {} +
 mkdir -p "$output_dir"
 rm -f "$output_dir/$archive_name"
