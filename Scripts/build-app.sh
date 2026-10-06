@@ -94,6 +94,12 @@ cp "$project_dir/outputs/sleuthkit-4.15.0-source.tar.gz" "$app_dir/Contents/Reso
 cp "$project_dir/Packaging/sleuthkit-preopened-fd.patch" "$app_dir/Contents/Resources/SourceArchives/"
 cp "$project_dir/outputs/untrunc-9d86ec9-source.tar.gz" "$app_dir/Contents/Resources/SourceArchives/"
 cp "$project_dir/outputs/ffmpeg-8.1-source.tar.xz" "$app_dir/Contents/Resources/SourceArchives/"
+# TASK-016: build-only патч untrunc (локальный архив FFmpeg вместо сети) и
+# манифест/toolchain-evidence контрольных сборок.
+cp "$project_dir/Packaging/untrunc-local-archive-build.patch" "$app_dir/Contents/Resources/SourceArchives/"
+cp "$project_dir/ThirdParty/BUILD-PROVENANCE.json" "$app_dir/Contents/Resources/BUILD-PROVENANCE.json"
+mkdir -p "$app_dir/Contents/Resources/BuildEvidence"
+cp -R "$project_dir/docs/build-evidence/TASK-016" "$app_dir/Contents/Resources/BuildEvidence/TASK-016"
 clang -Os "$project_dir/Packaging/tool-launcher.c" -o "$app_dir/Contents/Resources/Tools/tool-launcher"
 clang -Os "$project_dir/Packaging/recoveryapp-readonly-helper.c" \
     -o "$app_dir/Contents/Resources/Tools/recoveryapp-readonly-helper"

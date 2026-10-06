@@ -1,0 +1,61 @@
+(info) extracting local /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1.tar.xz ...
+tar xf /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1.tar.xz
+(info) please wait ...
+cd ffmpeg-8.1; ./configure --disable-doc --disable-everything --enable-decoders --disable-vdpau --enable-demuxers --enable-protocol=file --disable-avdevice --disable-swresample --disable-swscale --disable-avfilter --disable-xlib --disable-vaapi --disable-zlib --disable-bzlib --disable-lzma --disable-audiotoolbox --disable-videotoolbox --disable-libdrm --disable-autodetect --disable-sdl2
+install prefix            /usr/local
+source path               .
+C compiler                gcc
+C library
+ARCH                      aarch64 (generic)
+big-endian                no
+runtime cpu detection     yes
+NEON enabled              yes
+DOTPROD enabled           yes
+I8MM enabled              yes
+SVE enabled               yes
+SVE2 enabled              yes
+SME enabled               yes
+SME-I16I64 enabled        yes
+SME2 enabled              yes
+debug symbols             yes
+strip symbols             yes
+optimize for size         no
+optimizations             yes
+static                    yes
+shared                    no
+network support           yes
+threading support         pthreads
+safe bitstream reader     yes
+texi2html enabled         no
+perl enabled              yes
+pod2man enabled           yes
+makeinfo enabled          no
+makeinfo supports HTML    no
+experimental features     yes
+xmllint enabled           yes
+
+External libraries:
+
+External libraries providing hardware acceleration:
+
+Libraries:
+avcodec                 avformat                avutil
+
+Programs:
+ffprobe
+
+Enabled decoders:
+aac                     fastaudio               pgm
+aac_fixed               ffv1                    pgmyuv
+aac_latm                ffvhuff                 pgssub
+aasc                    ffwavesynth             pgx
+ac3                     fic                     phm
+ac3_fixed               fits                    photocd
+acelp_kelvin            flac                    pictor
+adpcm_4xm               flic                    pixlet
+adpcm_adx               flv                     pjs
+adpcm_afc               fmvc                    ppm
+adpcm_agm               fourxm                  prores
+adpcm_aica              fraps                   prores_raw
+adpcm_argo              frwu                    prosumer
+c++ .build_8.1/src/atom.o .build_8.1/src/codec.o .build_8.1/src/common.o .build_8.1/src/file.o .build_8.1/src/main.o .build_8.1/src/mp4.o .build_8.1/src/mutual_pattern.o .build_8.1/src/rsv.o .build_8.1/src/track.o .build_8.1/src/avc1/avc-config.o .build_8.1/src/avc1/avc1.o .build_8.1/src/avc1/nal-slice.o .build_8.1/src/avc1/nal.o .build_8.1/src/avc1/sps-info.o .build_8.1/src/hvc1/hvc1.o .build_8.1/src/hvc1/nal-slice.o .build_8.1/src/hvc1/nal.o -Lffmpeg-8.1/libavformat -lavformat -Lffmpeg-8.1/libavcodec -lavcodec -Lffmpeg-8.1/libavutil -lavutil -lpthread -ldl -liconv -s -o untrunc-81

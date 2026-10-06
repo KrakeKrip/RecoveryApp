@@ -1,0 +1,14 @@
+Свежие статические библиотеки этой сборки (timestamps):
+-rw-r--r--@ 1 atlhnv  staff  64859920 Oct  7 00:14 /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavcodec/libavcodec.a
+-rw-r--r--@ 1 atlhnv  staff  21181504 Oct  7 00:14 /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavformat/libavformat.a
+-rw-r--r--@ 1 atlhnv  staff   3228672 Oct  7 00:14 /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavutil/libavutil.a
+Команда линковки untrunc (из журнала make):
+da51f824fa76c8669e36b58c090a919bc159189846f610ad3824d164896484cc  /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavformat/libavformat.a
+59dcc9430a81de6280429d586656669a2124f05aaac6c175c177c6fc0e7e8e33  /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavcodec/libavcodec.a
+d716c64279d5a0957b968b4bc9e1adcc6fbac050c80a97b786223dc4d5294de7  /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavutil/libavutil.a
+c++ .build_8.1/src/atom.o .build_8.1/src/codec.o .build_8.1/src/common.o .build_8.1/src/file.o .build_8.1/src/main.o .build_8.1/src/mp4.o .build_8.1/src/mutual_pattern.o .build_8.1/src/rsv.o .build_8.1/src/track.o .build_8.1/src/avc1/avc-config.o .build_8.1/src/avc1/avc1.o .build_8.1/src/avc1/nal-slice.o .build_8.1/src/avc1/nal.o .build_8.1/src/avc1/sps-info.o .build_8.1/src/hvc1/hvc1.o .build_8.1/src/hvc1/nal-slice.o .build_8.1/src/hvc1/nal.o -Lffmpeg-8.1/libavformat -lavformat -Lffmpeg-8.1/libavcodec -lavcodec -Lffmpeg-8.1/libavutil -lavutil -lpthread -ldl -liconv -s -o untrunc-81
+otool -L кандидата (динамические зависимости):
+/Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/untrunc-81:
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1359.0.0)
+	/usr/lib/libiconv.2.dylib (compatibility version 7.0.0, current version 7.0.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 2200.27.0)

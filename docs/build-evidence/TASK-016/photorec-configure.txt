@@ -1,0 +1,2 @@
+cmake libjpeg: -DCMAKE_BUILD_TYPE=Release -DENABLE_SHARED=FALSE -DWITH_SIMD=TRUE -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0
+configure photorec: ./configure --disable-qt --disable-dfxml --enable-missing-uuid-ok --without-ext2fs --without-ntfs --without-ntfs3g --without-reiserfs --without-ewf --without-zlib --without-uuid --with-jpeg --with-jpeg-lib=<install>/lib --with-jpeg-includes=<install>/include CC=clang CFLAGS='-O2 -arch arm64 -mmacosx-version-min=14.0' LDFLAGS='-arch arm64 -mmacosx-version-min=14.0'

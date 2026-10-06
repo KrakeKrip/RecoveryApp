@@ -1,0 +1,3 @@
+patching file 'tsk/img/raw.c'
+patching file 'tsk/util/file_system_utils.h'
+patching file 'tsk/util/file_system_utils.c'

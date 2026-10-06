@@ -1,0 +1,24 @@
+--- a/Makefile
++++ b/Makefile
+@@ -75 +75,4 @@
+-VER = $(shell test -d .git && command -v git >/dev/null && echo "v`git rev-list --count HEAD`-`git describe --always --dirty --abbrev=7`")
++# TASK-016 build-only: сборка идёт из прикладываемого архива снимка
++# 9d86ec9, а не из git-клона; строка версии фиксируется явно и честно
++# отражает источник (archive-9d86ec9), а не git-метаданные.
++VER = archive-9d86ec9
+@@ -156,5 +159,5 @@
+-$(FF_DIR)/configure:
+-	@#read -p "Press [ENTER] if you agree to build ffmpeg-${FF_VER} now.. " input
+-	@echo "(info) downloading $(FF_DIR) ..."
+-	$(call download,/tmp/$(FF_DIR).tar.xz,https://www.ffmpeg.org/releases/$(FF_DIR).tar.xz)
+-	tar xf /tmp/$(FF_DIR).tar.xz
++# TASK-016 build-only: сеть запрещена. FFmpeg берётся исключительно из
++# локального архива (FF_ARCHIVE, проверяется сценарием сборки по
++# SHA-256), распаковывается в текущий каталог. Правило не скачивает
++# ничего: при отсутствии локального архива сборка падает с ошибкой.
++FF_ARCHIVE ?= /tmp/ffmpeg-$(FF_VER).tar.xz
+@@ -161,0 +165,4 @@
++$(FF_DIR)/configure: $(FF_ARCHIVE)
++	@echo "(info) extracting local $(FF_ARCHIVE) ..."
++	tar xf $(FF_ARCHIVE)
++

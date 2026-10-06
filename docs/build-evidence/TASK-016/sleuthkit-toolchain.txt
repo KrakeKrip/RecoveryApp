@@ -1,0 +1,12 @@
+date: 2026-10-06T20:34:31Z
+MACOSX_DEPLOYMENT_TARGET=14.0
+sdk_path: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+sdk_version: 27.0
+clang: Apple clang version 21.0.0 (clang-2100.3.34.2)
+clang: Target: arm64-apple-darwin27.2.0
+clang: Thread model: posix
+clang: InstalledDir: /Library/Developer/CommandLineTools/usr/bin
+make: GNU Make 3.81
+sleuthkit 4.15.0; archive_sha256=3a8c1e7d18a9b81f3e5e8aa78313974aceaafc6e051d636bc92cd7168286eca9
+patch_sha256=259dfdb6e63c8868f5ff4ae2a5ae855d9c441d8c835d5f265317654418b461ff
+deploy_target=14.0 sdk=27.0

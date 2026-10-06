@@ -1,0 +1,221 @@
+{
+  "task": "TASK-016",
+  "created": "2026-10-06",
+  "base_commit": "918070bc98af2edda95d5cec79d4c4b9862b5f01",
+  "manifest_version": 1,
+  "toolchain": {
+    "macos_deployment_target": "14.0",
+    "sdk_version": "26.5",
+    "clang": "Apple clang 21.0.0 (clang-2100.3.34.2)",
+    "make": "GNU Make 3.81",
+    "cmake": "cmake 4.4.3",
+    "evidence_dir": "docs/build-evidence/TASK-016"
+  },
+  "files": {
+    "outputs/sleuthkit-4.15.0-source.tar.gz": "3a8c1e7d18a9b81f3e5e8aa78313974aceaafc6e051d636bc92cd7168286eca9",
+    "outputs/testdisk-7.2-source.tar.bz2": "f8343be20cb4001c5d91a2e3bcd918398f00ae6d8310894a5a9f2feb813c283f",
+    "outputs/libjpeg-turbo-3.2.0-source.tar.gz": "6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e",
+    "outputs/untrunc-9d86ec9-source.tar.gz": "a46bbb0013b274cd239b0fe037cdf175e6865d62119e78f6f8d8684efbeaa8dc",
+    "outputs/ffmpeg-8.1-source.tar.xz": "b072aed6871998cce9b36e7774033105ca29e33632be5b6347f3206898e0756a",
+    "Packaging/sleuthkit-preopened-fd.patch": "259dfdb6e63c8868f5ff4ae2a5ae855d9c441d8c835d5f265317654418b461ff",
+    "Packaging/photorec-dev-fd.patch": "23f884cec48f10d43ed0d2c8ec011f29243819a5fa6294ab0da87e78e842d72b",
+    "Packaging/untrunc-local-archive-build.patch": "fc4a2b22c91c2da065ba5f6d12e2822a8f976aa52b4c1cece292a6427f4e4c68",
+    "ThirdParty/sleuthkit/bin/arm64/fls": "283ea6fa94d08f2e61e80ae3141642e8e81dd41db7b269890533589ab8080791",
+    "ThirdParty/sleuthkit/bin/arm64/icat": "a92a65f1bc52fdead9c22259689ea7602e870e12f83dc2fb01abc0fb466fb757",
+    "ThirdParty/sleuthkit/bin/arm64/mmls": "89e87e674eb66c0c655645e36d12a829910527c118434f4c4b1f4f76c7814341",
+    "ThirdParty/photorec/bin/arm64/photorec": "32479bc9d1aa32afe074a584651e637474a9ef4cd76e9610f7c255b353f5f70d",
+    "ThirdParty/untrunc/bin/arm64/untrunc": "32174ade355b61312640103717c65b6806708da1f590ee0982e5fb686999dc4e",
+    "Scripts/build-photorec.sh": "f0c9dd2643fe60518d2d5a89bf998ab1e624254149298a3d482536f11b3f2162",
+    "Scripts/build-sleuthkit.sh": "d5349fd69d4dbf21fa0dab37cef4f2046b8252406b55ee2428e5c4924c8c63e1",
+    "Scripts/build-untrunc.sh": "6b7fd773d0bbcfc2fa0c03bc56b019984feb823cf483eaa70a7dd5f589d74926",
+    "Scripts/finalize-toolchain-provenance.py": "d6cff0c1a6325984d75a15f59f8a5f68f4ba09c1ca3748de72a5935a92ce059b",
+    "Scripts/test-toolchain-provenance.sh": "63c101e0568256af5a41687f62c16971a7b5d5733c4c78e6a7cb502f48c45c2e",
+    "Scripts/verify-ffmpeg-config.py": "8276ae53d39b549a88b3439d3b0de498131058cacebfa61c10780c40bd7c7d58",
+    "docs/build-evidence/TASK-016/photorec-cmake-output.txt": "3593ae181c73cbf403328b7a0829394325d72e790b32c0eb843eaca3dced2c24",
+    "docs/build-evidence/TASK-016/photorec-configure-output.txt": "50718fe99061de7826bae95c6b981905ad2d1bb500d1f97cd8d864e37f2e372d",
+    "docs/build-evidence/TASK-016/photorec-configure.txt": "1ff799a89f898dab3b9e6d11d90448d88032b01b7c4e7c1623eda3a1547557d2",
+    "docs/build-evidence/TASK-016/photorec-patch.txt": "58bbcb73b16d22acec56e4ef37765d0223bee947a2faafdc6cbc2d4d5a0935fb",
+    "docs/build-evidence/TASK-016/photorec-toolchain.txt": "fd301cefa2fc3e0dade29c9e8b1e639d23eb128ffed86880eeeb3202806aca76",
+    "docs/build-evidence/TASK-016/sleuthkit-configure-output.txt": "6a661f8f4c19cc0ccc157aac6965d4999ba06d4ddc49a9015f27720f2e886db4",
+    "docs/build-evidence/TASK-016/sleuthkit-configure.txt": "89f95015172b3f3749f5b287a16c693a9d08ed41d5b0799cb3aee394bec65c18",
+    "docs/build-evidence/TASK-016/sleuthkit-make-output.txt": "fd01141cb01d4ad69cd427361fea1aa51f1a62ecd1a982e1c6d55f0c98563716",
+    "docs/build-evidence/TASK-016/sleuthkit-patch.txt": "fc0a52317970927cc7b02329f743ce6463e1fbbf03f15f4a9d6437afce527e74",
+    "docs/build-evidence/TASK-016/sleuthkit-toolchain.txt": "41c9ef1f8c6e66592a000911a3002551b6477a8d9c9c961e2fb61a04205e6c3a",
+    "docs/build-evidence/TASK-016/untrunc-ffmpeg-config-summary.txt": "d46fd49d609596568355fc0b9a9bc97aef077a6db8b707671edcdafe788ce6b4",
+    "docs/build-evidence/TASK-016/untrunc-ffmpeg-config.h": "3fae1aa1255f1025a1f1e2f9b590272f5f62482c0ddb4e45e62d698918c66f65",
+    "docs/build-evidence/TASK-016/untrunc-ffmpeg-config.mak": "f91ed2eca193d5b20467b46a0d1e43ef81b3fc352ad0ce9fc0473ec4d5c9e05f",
+    "docs/build-evidence/TASK-016/untrunc-link-evidence.txt": "cfbf818d083b4bac741cb0675b12bc84015dabd9ae1c46b0ccf4ae37e2536af3",
+    "docs/build-evidence/TASK-016/untrunc-make-output.txt": "33b014c9b8d51107b0ebeeb027b21624313bb2f80eef9c574ae2a78ac95a4f75",
+    "docs/build-evidence/TASK-016/untrunc-patch.txt": "6f582578165ddf18a014e8d6398f80ff4f12e936826d6e14e607cdc84e1ea8b0",
+    "docs/build-evidence/TASK-016/untrunc-raw-config-sha256.txt": "6be4d6cb389a7a0adc03db256f5adb3d7d8c7e84c57e526884cb8c40f6d4e7b1",
+    "docs/build-evidence/TASK-016/untrunc-toolchain.txt": "e458e3e0dcbbe6f744c4a08afb69f48a6cc6f7f49e9d6c8295da369811e33a99"
+  },
+  "evidence_files": [
+    "docs/build-evidence/TASK-016/photorec-cmake-output.txt",
+    "docs/build-evidence/TASK-016/photorec-configure-output.txt",
+    "docs/build-evidence/TASK-016/photorec-configure.txt",
+    "docs/build-evidence/TASK-016/photorec-patch.txt",
+    "docs/build-evidence/TASK-016/photorec-toolchain.txt",
+    "docs/build-evidence/TASK-016/sleuthkit-configure-output.txt",
+    "docs/build-evidence/TASK-016/sleuthkit-configure.txt",
+    "docs/build-evidence/TASK-016/sleuthkit-make-output.txt",
+    "docs/build-evidence/TASK-016/sleuthkit-patch.txt",
+    "docs/build-evidence/TASK-016/sleuthkit-toolchain.txt",
+    "docs/build-evidence/TASK-016/untrunc-ffmpeg-config-summary.txt",
+    "docs/build-evidence/TASK-016/untrunc-ffmpeg-config.h",
+    "docs/build-evidence/TASK-016/untrunc-ffmpeg-config.mak",
+    "docs/build-evidence/TASK-016/untrunc-link-evidence.txt",
+    "docs/build-evidence/TASK-016/untrunc-make-output.txt",
+    "docs/build-evidence/TASK-016/untrunc-patch.txt",
+    "docs/build-evidence/TASK-016/untrunc-raw-config-sha256.txt",
+    "docs/build-evidence/TASK-016/untrunc-toolchain.txt"
+  ],
+  "tools": {
+    "sleuthkit-fls": {
+      "component": "The Sleuth Kit 4.15.0",
+      "binary": "ThirdParty/sleuthkit/bin/arm64/fls",
+      "build_script": "Scripts/build-sleuthkit.sh",
+      "sources": [
+        "outputs/sleuthkit-4.15.0-source.tar.gz"
+      ],
+      "patches": [
+        "Packaging/sleuthkit-preopened-fd.patch"
+      ],
+      "configure": "./configure --disable-java --disable-shared --enable-static --without-afflib --without-libewf --without-libvhdi --without-libvmdk",
+      "dynamic_dependencies": [
+        "/usr/lib/libz.1.dylib",
+        "/usr/lib/libsqlite3.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libc++.1.dylib"
+      ],
+      "evidence": [
+        "docs/build-evidence/TASK-016/sleuthkit-toolchain.txt",
+        "docs/build-evidence/TASK-016/sleuthkit-configure-output.txt",
+        "docs/build-evidence/TASK-016/sleuthkit-make-output.txt"
+      ],
+      "sha256_unsigned_build": "57c0c9ecf8f2dc4aed9ae6582b63bb00a38e5f457f3a2e1b0cb71e42278e8d26",
+      "reproduction": "ld-подпись arm64 детерминирована: свежая сборка побайтно совпала с заменённым бинарником (две независимые сборки в TASK-016 дали тот же SHA)"
+    },
+    "sleuthkit-icat": {
+      "component": "The Sleuth Kit 4.15.0",
+      "binary": "ThirdParty/sleuthkit/bin/arm64/icat",
+      "build_script": "Scripts/build-sleuthkit.sh",
+      "sources": [
+        "outputs/sleuthkit-4.15.0-source.tar.gz"
+      ],
+      "patches": [
+        "Packaging/sleuthkit-preopened-fd.patch"
+      ],
+      "configure": "как у sleuthkit-fls",
+      "dynamic_dependencies": [
+        "/usr/lib/libz.1.dylib",
+        "/usr/lib/libsqlite3.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libc++.1.dylib"
+      ],
+      "evidence": [
+        "docs/build-evidence/TASK-016/sleuthkit-toolchain.txt"
+      ],
+      "sha256_unsigned_build": "af59a7f431007bf9753c9089cee89de67f15db146626245bc8e66f854afe5db9",
+      "reproduction": "побайтное совпадение двух независимых сборок TASK-016 и заменённого бинарника"
+    },
+    "sleuthkit-mmls": {
+      "component": "The Sleuth Kit 4.15.0",
+      "binary": "ThirdParty/sleuthkit/bin/arm64/mmls",
+      "build_script": "Scripts/build-sleuthkit.sh",
+      "sources": [
+        "outputs/sleuthkit-4.15.0-source.tar.gz"
+      ],
+      "patches": [
+        "Packaging/sleuthkit-preopened-fd.patch"
+      ],
+      "configure": "как у sleuthkit-fls",
+      "dynamic_dependencies": [
+        "/usr/lib/libz.1.dylib",
+        "/usr/lib/libsqlite3.dylib",
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libc++.1.dylib"
+      ],
+      "evidence": [
+        "docs/build-evidence/TASK-016/sleuthkit-toolchain.txt"
+      ],
+      "sha256_unsigned_build": "17968b5e06ec5bda56e762f0a929e499f6fb5d8d119bba7edfc99639a6a817b4",
+      "reproduction": "побайтное совпадение двух независимых сборок TASK-016 и заменённого бинарника"
+    },
+    "photorec": {
+      "component": "PhotoRec 7.2 (TestDisk) + libjpeg-turbo 3.2.0 (статически)",
+      "binary": "ThirdParty/photorec/bin/arm64/photorec",
+      "build_script": "Scripts/build-photorec.sh",
+      "sources": [
+        "outputs/testdisk-7.2-source.tar.bz2",
+        "outputs/libjpeg-turbo-3.2.0-source.tar.gz"
+      ],
+      "patches": [
+        "Packaging/photorec-dev-fd.patch"
+      ],
+      "configure": "./configure --disable-qt --disable-dfxml --enable-missing-uuid-ok --without-ext2fs --without-ntfs --without-ntfs3g --without-reiserfs --without-ewf --without-zlib --without-uuid --with-jpeg; libjpeg-turbo: cmake Release, ENABLE_SHARED=FALSE, WITH_SIMD=TRUE",
+      "dynamic_dependencies": [
+        "/usr/lib/libncurses.5.4.dylib",
+        "/usr/lib/libiconv.2.dylib",
+        "/usr/lib/libSystem.B.dylib"
+      ],
+      "evidence": [
+        "docs/build-evidence/TASK-016/photorec-toolchain.txt",
+        "docs/build-evidence/TASK-016/photorec-configure-output.txt",
+        "docs/build-evidence/TASK-016/photorec-cmake-output.txt"
+      ],
+      "sha256_unsigned_build": "d5c50c8658466c81c6bf5f5363e9537e9e080c34034147a5d0bb03866f5208ec",
+      "reproduction": "после ad-hoc подписи кандидат побайтно совпал с заменённым бинарником (32479bc9…) — сборка воспроизводима на том же toolchain"
+    },
+    "untrunc": {
+      "component": "untrunc (снимок 9d86ec9) + FFmpeg 8.1 (статически, LGPL-конфигурация)",
+      "binary": "ThirdParty/untrunc/bin/arm64/untrunc",
+      "build_script": "Scripts/build-untrunc.sh",
+      "sources": [
+        "outputs/untrunc-9d86ec9-source.tar.gz",
+        "outputs/ffmpeg-8.1-source.tar.xz"
+      ],
+      "patches": [
+        "Packaging/untrunc-local-archive-build.patch"
+      ],
+      "build_command": "make untrunc-81 IS_RELEASE=1 FF_CONFIG_FLAGS=<explicit flags in Scripts/build-untrunc.sh; includes --disable-autodetect --disable-sdl2>",
+      "ffmpeg_config_evidence": [
+        "docs/build-evidence/TASK-016/untrunc-ffmpeg-config.h",
+        "docs/build-evidence/TASK-016/untrunc-ffmpeg-config.mak",
+        "docs/build-evidence/TASK-016/untrunc-ffmpeg-config-summary.txt"
+      ],
+      "link_evidence": "docs/build-evidence/TASK-016/untrunc-link-evidence.txt",
+      "dynamic_dependencies": [
+        "/usr/lib/libSystem.B.dylib",
+        "/usr/lib/libiconv.2.dylib",
+        "/usr/lib/libc++.1.dylib"
+      ],
+      "version_string": "archive-9d86ec9",
+      "evidence": [
+        "docs/build-evidence/TASK-016/untrunc-toolchain.txt",
+        "docs/build-evidence/TASK-016/untrunc-make-output.txt"
+      ],
+      "sha256_unsigned_build": "5a2d981cf0b6a4275c9f59f455976f4ad45b2f44b0df079b532c3497ec5a69dc",
+      "notes": "собран из прикладываемого архива без сети (build-only патч заменяет правило скачивания); строка версии изменена с v1-9d86ec9 на archive-9d86ec9, т.к. сборка не из git-клона; связь архива с коммитом 9d86ec9 остаётся UNVERIFIED (см. docs/DISTRIBUTION_CHECKLIST.md)"
+    }
+  },
+  "baseline_backup": {
+    "binaries": "dist/TASK-016-baseline-binaries/baseline/ (не коммитится)",
+    "sha256": {
+      "fls": "57c0c9ecf8f2dc4aed9ae6582b63bb00a38e5f457f3a2e1b0cb71e42278e8d26",
+      "icat": "af59a7f431007bf9753c9089cee89de67f15db146626245bc8e66f854afe5db9",
+      "mmls": "17968b5e06ec5bda56e762f0a929e499f6fb5d8d119bba7edfc99639a6a817b4",
+      "photorec": "32479bc9d1aa32afe074a584651e637474a9ef4cd76e9610f7c255b353f5f70d",
+      "untrunc": "cda6c307caed260f6840aefdd4f7516a6003f85dbd3e9e27d9a3d40c2645b853"
+    }
+  },
+  "evidence_normalization": "Trailing spaces and final empty lines removed; values and commands unchanged. Make log retains configure summary and actual link command.",
+  "verification_helpers": [
+    "Scripts/build-photorec.sh",
+    "Scripts/build-sleuthkit.sh",
+    "Scripts/build-untrunc.sh",
+    "Scripts/finalize-toolchain-provenance.py",
+    "Scripts/test-toolchain-provenance.sh",
+    "Scripts/verify-ffmpeg-config.py"
+  ]
+}

@@ -21,12 +21,12 @@
 | 1 | RecoveryApp + RecoveryCore (GUI, статическая библиотека) | основной исполняемый файл `Contents/MacOS/RecoveryApp` | 0.8.1 (13), `Packaging/Info.plist` | GPL-2 (`LICENSE`) | `Resources/LICENSE` (добавлено в TASK-015) | `Sources/` в source ZIP | PASS |
 | 2 | `tool-launcher`, `recoveryapp-readonly-helper`, `recoveryapp-metadata-helper` | собственные C-процессы (`execv`, read-only, проверка размера) | собираются `build-app.sh` из `Packaging/*.c` | GPL-2 (`LICENSE`) | `Resources/LICENSE` | `Packaging/*.c` в source ZIP | PASS |
 | 3 | `recoveryapp-cli` | CLI для тестов/автоматизации; в `.app` НЕ входит | общий `RecoveryCore` | GPL-2 | — (не поставляется в `.app`) | `Sources/` в source ZIP | PASS |
-| 4 | Sleuth Kit 4.15.0 — `fls`, `mmls` | отдельные CLI-процессы (быстрый поиск/извлечение), запуск через `tool-launcher` (`execv`), без линковки libtsk | 4.15.0: `SOURCE.md`; релиз GitHub `sleuthkit-4.15.0` существует | CPL 1.0 + mixed (см. `LICENSES-README.md`) | `sleuthkit-CPL-1.0.txt`, `sleuthkit-LICENSES-README.md`, `sleuthkit-SOURCE.md` | `SourceArchives/sleuthkit-4.15.0-source.tar.gz` + `sleuthkit-preopened-fd.patch` | WARNING (provenance бинарников) |
+| 4 | Sleuth Kit 4.15.0 — `fls`, `mmls` | отдельные CLI-процессы (быстрый поиск/извлечение), запуск через `tool-launcher` (`execv`), без линковки libtsk | 4.15.0: `SOURCE.md`; релиз GitHub `sleuthkit-4.15.0` существует | CPL 1.0 + mixed (см. `LICENSES-README.md`) | `sleuthkit-CPL-1.0.txt`, `sleuthkit-LICENSES-README.md`, `sleuthkit-SOURCE.md` | `SourceArchives/sleuthkit-4.15.0-source.tar.gz` + `sleuthkit-preopened-fd.patch` | PASS — provenance доказан контрольной пересборкой TASK-016 (побайтное совпадение) |
 | 5 | Sleuth Kit 4.15.0 — `icat` | отдельный CLI-процесс (извлечение) | как выше | IBM Public License 1.0 + mixed | `sleuthkit-IPL-1.0.txt` | как выше | WARNING (provenance бинарников) |
-| 6 | PhotoRec 7.2 | отдельный CLI-процесс (глубокий сигнатурный поиск) | 7.2: `AC_INIT([testdisk],[7.2])` в архиве; cgsecurity.org подтверждает 7.2 (2024-02-22) | GPL v2 or later (`photorec-COPYING.txt`) | `photorec-COPYING.txt`, `photorec-SOURCE.md` | `SourceArchives/testdisk-7.2-source.tar.bz2` + `photorec-dev-fd.patch` (добавлено в TASK-015) | WARNING (provenance бинарника) |
+| 6 | PhotoRec 7.2 | отдельный CLI-процесс (глубокий сигнатурный поиск) | 7.2: `AC_INIT([testdisk],[7.2])` в архиве; cgsecurity.org подтверждает 7.2 (2024-02-22) | GPL v2 or later (`photorec-COPYING.txt`) | `photorec-COPYING.txt`, `photorec-SOURCE.md` | `SourceArchives/testdisk-7.2-source.tar.bz2` + `photorec-dev-fd.patch` | PASS — provenance доказан контрольной пересборкой TASK-016 (побайтное совпадение после подписи) |
 | 7 | libjpeg-turbo 3.2.0 | статически внутри `photorec` | 3.2.0: строка в бинарнике; релиз GitHub подтверждён | BSD-3-clause + IJG | `libjpeg-turbo-LICENSE.md`, `libjpeg-IJG-README.txt` (побайтно из архива) | `SourceArchives/libjpeg-turbo-3.2.0-source.tar.gz` | PASS (комплектность файлов); фактическая статическая связь с бинарником photorec — в рамках WARNING строки 6 |
-| 8 | untrunc | отдельный CLI-процесс (исправление видео) | коммит `9d86ec9ef2ff…` подтверждён на GitHub; в бинарнике строка `v1-9d86ec9` (версия, не конфигурация) | GPL-2 (`untrunc-COPYING.txt`) | `untrunc-COPYING.txt`, `untrunc-SOURCE.md` | `SourceArchives/untrunc-9d86ec9-source.tar.gz` | UNVERIFIED (связь бинарника с архивом/коммитом) |
-| 9 | FFmpeg 8.1 | статически внутри `untrunc` (`libavformat`, `libavcodec`, `libavutil`) | 8.1: строка в бинарнике `ffmpeg '8.1'`; ffmpeg.org подтверждает ветку 8.1 | LGPL-2.1-or-later — условно по рецепту; фактическая конфигурация бинарника не доказана | `ffmpeg-COPYING.LGPLv2.1.txt` (добавлено в TASK-015) | `SourceArchives/ffmpeg-8.1-source.tar.xz` + рецепт в Makefile архива untrunc | UNVERIFIED (фактические configure-флаги бинарника) |
+| 8 | untrunc | отдельный CLI-процесс (исправление видео) | `archive-9d86ec9` (TASK-016, строка в бинарнике); коммит `9d86ec9ef2ff…` подтверждён на GitHub; связь архива с коммитом UNVERIFIED | GPL-2 (`untrunc-COPYING.txt`) | `untrunc-COPYING.txt`, `untrunc-SOURCE.md` | `SourceArchives/untrunc-9d86ec9-source.tar.gz` | PASS — provenance доказан контрольной сборкой TASK-016; связь архива с коммитом UNVERIFIED |
+| 9 | FFmpeg 8.1 | статически внутри `untrunc` (`libavformat`, `libavcodec`, `libavutil`) | 8.1: строка в бинарнике `ffmpeg '8.1'`; ffmpeg.org подтверждает ветку 8.1 | LGPL-2.1-or-later — подтверждено фактической конфигурацией сборки TASK-016 (`config.h`/`config.mak` в evidence: без GPL/nonfree, без внешних библиотек) | `ffmpeg-COPYING.LGPLv2.1.txt` | `SourceArchives/ffmpeg-8.1-source.tar.xz` + рецепт (Makefile + build-only патч) | PASS — фактическая конфигурация нового бинарника зафиксирована evidence |
 | 10 | dmgbuild 1.6.7, ds_store 1.3.3, mac_alias 2.2.3 (Python) | только среда сборки DMG (`Scripts/package-dmg.sh`); в `.app` и DMG не попадают | `ThirdParty/BuildTools/README.md`; лицензии `ThirdParty/BuildTools/licenses/` | MIT | — (не поставляются) | попадают в source ZIP через `ThirdParty/BuildTools` (без `__pycache__`) | PASS (build-tool) |
 | 11 | системные библиотеки macOS (`libz`, `libsqlite3`, `libncurses.5.4`, `libiconv`, `libc++`, `libSystem`) | динамические зависимости поставляемых CLI | `otool -L` | предоставляются macOS | поставка не требуется | поставка не требуется | PASS (N/A) |
 
@@ -51,15 +51,25 @@
 | `ThirdParty/untrunc/FFMPEG-COPYING.LGPLv2.1.txt` (из архива FFmpeg 8.1 без изменений) | `246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30` |
 | `LICENSE` (GPL-2, RecoveryApp) | `d9310978058cc0def11befd94c85e484350322c746ed4dec3f3e03b04e60d295` |
 
-### Поставляемые бинарники (`ThirdParty/*/bin/arm64/`)
+### Поставляемые бинарники (`ThirdParty/*/bin/arm64/`, после контрольной пересборки TASK-016)
 
-| Бинарник | SHA-256 (фактический) | Совпадение с записью |
+| Бинарник | SHA-256 (ad-hoc подписан) | Совпадение с записью |
 |---|---|---|
-| `sleuthkit/fls` | `57c0c9ecf8f2dc4aed9ae6582b63bb00a38e5f457f3a2e1b0cb71e42278e8d26` | запись обновлена в TASK-015 |
-| `sleuthkit/icat` | `af59a7f431007bf9753c9089cee89de67f15db146626245bc8e66f854afe5db9` | запись обновлена в TASK-015 |
-| `sleuthkit/mmls` | `17968b5e06ec5bda56e762f0a929e499f6fb5d8d119bba7edfc99639a6a817b4` | запись обновлена в TASK-015 |
-| `photorec/photorec` | `32479bc9d1aa32afe074a584651e637474a9ef4cd76e9610f7c255b353f5f70d` | запись обновлена в TASK-015 |
-| `untrunc/untrunc` | `cda6c307caed260f6840aefdd4f7516a6003f85dbd3e9e27d9a3d40c2645b853` | да (`ThirdParty/untrunc/SOURCE.md`) |
+| `sleuthkit/fls` | `283ea6fa94d08f2e61e80ae3141642e8e81dd41db7b269890533589ab8080791` | да (`ThirdParty/BUILD-PROVENANCE.json`) |
+| `sleuthkit/icat` | `a92a65f1bc52fdead9c22259689ea7602e870e12f83dc2fb01abc0fb466fb757` | да (`ThirdParty/BUILD-PROVENANCE.json`) |
+| `sleuthkit/mmls` | `89e87e674eb66c0c655645e36d12a829910527c118434f4c4b1f4f76c7814341` | да (`ThirdParty/BUILD-PROVENANCE.json`) |
+| `photorec/photorec` | `32479bc9d1aa32afe074a584651e637474a9ef4cd76e9610f7c255b353f5f70d` | да (`ThirdParty/BUILD-PROVENANCE.json`) |
+| `untrunc/untrunc` | `32174ade355b61312640103717c65b6806708da1f590ee0982e5fb686999dc4e` | да (`ThirdParty/BUILD-PROVENANCE.json`) |
+
+Контрольная пересборка TASK-016: TSK и PhotoRec воспроизведены побайтно
+(две независимые сборки; ld-подпись arm64 детерминирована, PhotoRec — после
+ad-hoc подписи); untrunc пересобран из прикладываемого архива без сети,
+фактическая конфигурация FFmpeg зафиксирована evidence. Прежние бинарники
+(TASK-015: fls `57c0c9ec…`, icat `af59a7f4…`, mmls `17968b5e…`, untrunc
+`cda6c307…`) сохранены в `dist/TASK-016-baseline-binaries/baseline/`; для
+них provenance не заявляется. Машинный манифест:
+`ThirdParty/BUILD-PROVENANCE.json`, человекочитаемая цепочка:
+`docs/TOOLCHAIN_PROVENANCE.md`.
 
 ## sleuthkit-4.15.0-source.tar.gz: сверка чеклиста пункт за пунктом
 
@@ -101,7 +111,7 @@
 - Бинарники собраны из изменённых источников — модификация не скрыта:
   явно указана в `sleuthkit-SOURCE.md` в `.app` и в этом документе. PASS.
 
-## FFmpeg 8.1: рецепт проверен, фактическая конфигурация бинарника UNVERIFIED
+## FFmpeg 8.1: фактическая конфигурация зафиксирована контрольной сборкой TASK-016
 
 Что проверено (рецепт):
 - Цель `untrunc-81` в `Makefile` архива `untrunc-9d86ec9-source.tar.gz`
@@ -118,26 +128,24 @@
   компонентов и configure-строки — checklist обязан описывать configure
   line: он описан выше как рецепт.
 
-Что НЕ доказано (UNVERIFIED):
-- Фактические configure-флаги, с которыми собран поставляемый бинарник
-  `untrunc` (SHA-256 `cda6c307…`). В бинарнике нет build/config metadata:
-  поиск `strings` не находит ни строки configure-флагов, ни иных отметок
-  конфигурации; строка `ffmpeg '8.1'` доказывает версию, но не флаги.
-- Связь бинарника именно с этим архивом и этим рецептом (побайтная
-  воспроизводимость сборки не проверялась; сборка выполнялась из
-  git-клона, а не из прикладываемого архива — см. ограничение идентичности
-  архива коммиту ниже).
-- Отсутствие динамических зависимостей (`otool -L`) доказывает только
-  отсутствие динамики; статически включённые компоненты им не исключаются.
-
-Следствие: утверждение «компоненты FFmpeg в поставляемом бинарнике —
-LGPL-2.1-or-later» остаётся УСЛОВНЫМ по рецепту и не является установленным
-фактом о бинарнике. Полный текст LGPL 2.1 включён без изменений
+Обновление TASK-016 с исправлением Codex: поставляемый бинарник untrunc (`32174ade…`, строка
+версии `archive-9d86ec9`) пересобран из прикладываемого архива hardened
+сценарием; фактическая конфигурация FFmpeg этой сборки зафиксирована
+evidence — `config.h` и `ffbuild/config.mak` в
+`docs/build-evidence/TASK-016/`: `CONFIG_GPL`/`CONFIG_NONFREE` не
+установлены, внешние библиотеки не включены. Утверждение «компоненты
+FFmpeg в действующем бинарнике — LGPL-2.1-or-later» теперь опирается на
+зафиксированную конфигурацию, а не только на рецепт. Побайтная
+воспроизводимость untrunc не заявляется; прежний бинарник (`cda6c307…`,
+собран из git-клона) сохранён в baseline и для него provenance не
+заявляется. Полный текст LGPL 2.1 включён без изменений
 (`ffmpeg-COPYING.LGPLv2.1.txt` в `.app`; исходник — `COPYING.LGPLv2.1`
-архива FFmpeg 8.1); архив содержит также COPYING.GPLv2/v3. Следующий шаг для
-снятия UNVERIFIED: контрольная пересборка `untrunc-81` строго из
-прикладываемого архива (или сборка с выводом configure-строки в
-сопроводительный файл) и сверка с поставляемым бинарником.
+архива FFmpeg 8.1); архив содержит также COPYING.GPLv2/v3. Codex 2026-10-07
+явно отключил autodetect и SDL2; generated configuration проверяется guard.
+Первоначальная сборка GLM обнаруживала SDL2 и системные интеграции, её summary
+был ошибочным. Действующая сборка их не обнаруживает; все evidence/рецепты
+теперь проверяются по SHA. Независимо остаётся ограничение идентичности
+исходного архива git-коммиту, описанное ниже.
 
 Ограничение идентичности архива untrunc: побайтное совпадение
 `untrunc-9d86ec9-source.tar.gz` с `git archive` коммита `9d86ec9` офлайн не
@@ -161,22 +169,22 @@ LGPL-2.1-or-later» остаётся УСЛОВНЫМ по рецепту и н�
 
 ## Оставшиеся вопросы и блокеры
 
-1. **Побайтный provenance бинарников TSK и PhotoRec — UNVERIFIED.** Записанные
-   ранее SHA-256 устарели (бинарники пересобраны/переподписаны 2026-09-14 и
-   2026-09-18; записи обновлены в TASK-015). Контрольные пересборки из
-   архивов и патчей в TASK-015 не выполнялись (признаны избыточными для
-   комплектностного аудита). Следующий шаг: однократная контрольная
-   пересборка `Scripts/build-sleuthkit.sh` и `Scripts/build-photorec.sh`,
-   функциональная сверка и фиксация новых SHA как эталонных.
-2. **Фактическая конфигурация FFmpeg в бинарнике untrunc и связь бинарника с
-   архивом/коммитом — UNVERIFIED.** Рецепт (`FF_CONFIG_FLAGS` в Makefile
-   архива) соответствует LGPL-конфигурации, но не доказывает флаги
-   фактической сборки: в бинарнике нет build/config metadata (строки
-   configure-флагов отсутствуют), версия доказывает только версию. Следующий
-   шаг: контрольная пересборка `untrunc-81` строго из прикладываемого архива
-   (или сборка с записью configure-строки в сопроводительный файл) и сверка.
-   Ограничение: побайтная идентичность `untrunc-9d86ec9-source.tar.gz`
-   коммиту `9d86ec9` офлайн не проверялась.
+1. **Provenance TSK и PhotoRec — доказан контрольной пересборкой TASK-016.**
+   Ранее (TASK-015) он был UNVERIFIED. Оба hardened-сценария проверяют
+   SHA входов, применяют патч однократно и пишут toolchain-evidence;
+   свежие сборки побайтно совпали с заменёнными бинарниками (TSK —
+   детерминизм ld-подписи, подтверждён двумя независимыми сборками;
+   PhotoRec — после ad-hoc подписи), записи манифеста зафиксированы как
+   эталонные. Прежние бинарники сохранены в baseline-каталоге без заявлений
+   об их происхождении.
+2. **Конфигурация FFmpeg — зафиксирована контрольной сборкой TASK-016;
+   связь архива untrunc с коммитом `9d86ec9` остаётся UNVERIFIED.**
+   Действующий бинарник untrunc пересобран строго из прикладываемого архива
+   (build-only патч запрещает сети), фактические `config.h`/`config.mak`
+   сохранены в evidence и подтверждают LGPL-конфигурацию без GPL/nonfree и
+   внешних библиотек. Побайтная идентичность архива коммиту офлайн не
+   проверялась (нет локального клона); побайтная воспроизводимость untrunc
+   не заявляется.
 3. **Агрегирование CPL/IPL-программ с GPL-приложением — открытый юридический
    вопрос.** Инженерная модель «отдельные процессы, `execv`, без общих
    структур» соответствует аргументации GNU GPL FAQ о separate programs, но
@@ -203,6 +211,13 @@ LGPL-2.1-or-later» остаётся УСЛОВНЫМ по рецепту и н�
 TASK-015 `LICENSE` RecoveryApp и LGPL-2.1 для FFmpeg), уведомления, точные
 исходные архивы пяти компонентов и оба патча; включённые копии побайтно
 совпадают с исходниками репозитория и архивами.
+
+Обновление TASK-016: все пять встроенных инструментов пересобраны из
+прикладываемых источников; для действующих бинарников provenance доказан
+цепочкой «архив + патч + конфигурация + toolchain → бинарник»
+(`ThirdParty/BUILD-PROVENANCE.json`, `docs/TOOLCHAIN_PROVENANCE.md`);
+манифест и evidence включены в комплект и проверяются
+`Scripts/test-toolchain-provenance.sh`.
 
 Что этот аудит НЕ утверждает:
 

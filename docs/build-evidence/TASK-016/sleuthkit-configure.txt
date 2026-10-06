@@ -1,0 +1,2 @@
+configure: ./configure --disable-java --disable-shared --enable-static --without-afflib --without-libewf --without-libvhdi --without-libvmdk
+CFLAGS='-O2 -arch arm64' CXXFLAGS='-O2 -arch arm64' LDFLAGS='-arch arm64'

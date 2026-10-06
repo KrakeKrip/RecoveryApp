@@ -37,6 +37,8 @@ required_copies=(
     "Contents/Resources/SourceArchives/ffmpeg-8.1-source.tar.xz:$project_dir/outputs/ffmpeg-8.1-source.tar.xz"
     "Contents/Resources/SourceArchives/sleuthkit-preopened-fd.patch:$project_dir/Packaging/sleuthkit-preopened-fd.patch"
     "Contents/Resources/SourceArchives/photorec-dev-fd.patch:$project_dir/Packaging/photorec-dev-fd.patch"
+    "Contents/Resources/SourceArchives/untrunc-local-archive-build.patch:$project_dir/Packaging/untrunc-local-archive-build.patch"
+    "Contents/Resources/BUILD-PROVENANCE.json:$project_dir/ThirdParty/BUILD-PROVENANCE.json"
 )
 
 # Бинарники инструментов: обязательное присутствие.
@@ -54,6 +56,16 @@ done
 for tool in "${required_tools[@]}"; do
     [[ -x "$app_dir/Contents/Resources/Tools/$tool" ]] \
         || fail "отсутствует инструмент $tool"
+done
+
+# TASK-016: toolchain-evidence в .app побайтно равны репозиторию.
+evidence_src="$project_dir/docs/build-evidence/TASK-016"
+[[ -d "$evidence_src" ]] || fail "нет evidence-каталога $evidence_src"
+for ev in "$evidence_src"/*(N); do
+    name="${ev:t}"
+    app_ev="$app_dir/Contents/Resources/BuildEvidence/TASK-016/$name"
+    [[ -f "$app_ev" ]] || fail "отсутствует evidence $app_ev"
+    cmp -s "$app_ev" "$ev" || fail "evidence $name отличается от репозитория"
 done
 
 print "OK: лицензионный комплект $app_dir полон и совпадает с репозиторием"

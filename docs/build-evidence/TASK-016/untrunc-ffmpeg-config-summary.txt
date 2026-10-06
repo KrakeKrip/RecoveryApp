@@ -1,0 +1,4 @@
+FFMPEG_CONFIGURATION=--disable-doc --disable-everything --enable-decoders --disable-vdpau --enable-demuxers --enable-protocol=file --disable-avdevice --disable-swresample --disable-swscale --disable-avfilter --disable-xlib --disable-vaapi --disable-zlib --disable-bzlib --disable-lzma --disable-audiotoolbox --disable-videotoolbox --disable-libdrm --disable-autodetect --disable-sdl2
+FFMPEG_LICENSE=LGPL version 2.1 or later
+external optional dependencies: disabled
+enabled system integrations: none

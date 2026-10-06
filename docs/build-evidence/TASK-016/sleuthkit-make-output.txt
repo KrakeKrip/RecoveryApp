@@ -1,0 +1,46 @@
+Making all in tsk
+/Library/Developer/CommandLineTools/usr/bin/make  all-recursive
+Making all in base
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT md5c.lo -MD -MP -MF .deps/md5c.Tpo -c -o md5c.lo md5c.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mymalloc.lo -MD -MP -MF .deps/mymalloc.Tpo -c -o mymalloc.lo mymalloc.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT sha1c.lo -MD -MP -MF .deps/sha1c.Tpo -c -o sha1c.lo sha1c.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT crc.lo -MD -MP -MF .deps/crc.Tpo -c -o crc.lo crc.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_endian.lo -MD -MP -MF .deps/tsk_endian.Tpo -c -o tsk_endian.lo tsk_endian.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_error.lo -MD -MP -MF .deps/tsk_error.Tpo -c -o tsk_error.lo tsk_error.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_list.lo -MD -MP -MF .deps/tsk_list.Tpo -c -o tsk_list.lo tsk_list.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_parse.lo -MD -MP -MF .deps/tsk_parse.Tpo -c -o tsk_parse.lo tsk_parse.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_printf.lo -MD -MP -MF .deps/tsk_printf.Tpo -c -o tsk_printf.lo tsk_printf.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_unicode.lo -MD -MP -MF .deps/tsk_unicode.Tpo -c -o tsk_unicode.lo tsk_unicode.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT md5c.lo -MD -MP -MF .deps/md5c.Tpo -c md5c.c -o md5c.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT crc.lo -MD -MP -MF .deps/crc.Tpo -c crc.c -o crc.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_error.lo -MD -MP -MF .deps/tsk_error.Tpo -c tsk_error.c -o tsk_error.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mymalloc.lo -MD -MP -MF .deps/mymalloc.Tpo -c mymalloc.c -o mymalloc.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_endian.lo -MD -MP -MF .deps/tsk_endian.Tpo -c tsk_endian.c -o tsk_endian.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT sha1c.lo -MD -MP -MF .deps/sha1c.Tpo -c sha1c.c -o sha1c.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_unicode.lo -MD -MP -MF .deps/tsk_unicode.Tpo -c tsk_unicode.c -o tsk_unicode.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_parse.lo -MD -MP -MF .deps/tsk_parse.Tpo -c tsk_parse.c -o tsk_parse.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_list.lo -MD -MP -MF .deps/tsk_list.Tpo -c tsk_list.c -o tsk_list.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_printf.lo -MD -MP -MF .deps/tsk_printf.Tpo -c tsk_printf.c -o tsk_printf.o
+mv -f .deps/mymalloc.Tpo .deps/mymalloc.Plo
+mv -f .deps/crc.Tpo .deps/crc.Plo
+mv -f .deps/tsk_list.Tpo .deps/tsk_list.Plo
+mv -f .deps/tsk_printf.Tpo .deps/tsk_printf.Plo
+mv -f .deps/tsk_parse.Tpo .deps/tsk_parse.Plo
+mv -f .deps/tsk_error.Tpo .deps/tsk_error.Plo
+mv -f .deps/tsk_endian.Tpo .deps/tsk_endian.Plo
+...[обрезано]...
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o callback_style callback-style.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o posix_style posix-style.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o callback_cpp_style callback-cpp-style.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o posix_cpp_style posix-cpp-style.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: ignoring duplicate libraries: '-lc++'
+Making all in man
+make[1]: Nothing to be done for `all'.
+make[1]: Nothing to be done for `all-am'.
