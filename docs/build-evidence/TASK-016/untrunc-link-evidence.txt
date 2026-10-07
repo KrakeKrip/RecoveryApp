@@ -1,7 +1,7 @@
 Свежие статические библиотеки этой сборки (timestamps):
--rw-r--r--@ 1 atlhnv  staff  64859920 Oct  7 00:14 /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavcodec/libavcodec.a
--rw-r--r--@ 1 atlhnv  staff  21181504 Oct  7 00:14 /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavformat/libavformat.a
--rw-r--r--@ 1 atlhnv  staff   3228672 Oct  7 00:14 /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavutil/libavutil.a
+-rw-r--r--  1 atlhnv  staff  64859920 Oct  7 18:20 /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavcodec/libavcodec.a
+-rw-r--r--  1 atlhnv  staff  21181504 Oct  7 18:20 /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavformat/libavformat.a
+-rw-r--r--  1 atlhnv  staff   3228672 Oct  7 18:20 /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavutil/libavutil.a
 Команда линковки untrunc (из журнала make):
 da51f824fa76c8669e36b58c090a919bc159189846f610ad3824d164896484cc  /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavformat/libavformat.a
 59dcc9430a81de6280429d586656669a2124f05aaac6c175c177c6fc0e7e8e33  /Users/atlhnv/RecoveryApp/work/TASK-016/untrunc-build/source/ffmpeg-8.1/libavcodec/libavcodec.a

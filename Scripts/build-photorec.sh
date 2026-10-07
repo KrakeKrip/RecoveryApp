@@ -15,7 +15,7 @@ jpeg_archive="$project_dir/outputs/libjpeg-turbo-3.2.0-source.tar.gz"
 patch_file="$project_dir/Packaging/photorec-dev-fd.patch"
 expected_testdisk_sha="f8343be20cb4001c5d91a2e3bcd918398f00ae6d8310894a5a9f2feb813c283f"
 expected_jpeg_sha="6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e"
-expected_patch_sha="23f884cec48f10d43ed0d2c8ec011f29243819a5fa6294ab0da87e78e842d72b"
+expected_patch_sha="47e3d5bc4c0dec549a0bb1723ac075d5c6dd02dbb3e1f5e9bf0bed245ae981d5"
 destination="$project_dir/ThirdParty/photorec/bin/arm64"
 stage_dir="${STAGE_DIR:-}"
 # Фиксированный собственный рабочий каталог внутри проекта.

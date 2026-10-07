@@ -1,6 +1,6 @@
 # Комплектностный чеклист лабораторной поставки (TASK-015)
 
-Дата аудита: 2026-10-06. Ветка: `glm/task-015-license-package-audit`.
+Исходный аудит: 2026-10-06 (TASK-015). Повторная проверка: 2026-10-07.
 Это инженерная проверка комплектности поставки, а не юридическое заключение и
 не разрешение на публичный или коммерческий релиз. Тексты условий лицензий
 приводятся только по их официальным полным версиям; инженерная интерпретация
@@ -22,10 +22,10 @@
 | 2 | `tool-launcher`, `recoveryapp-readonly-helper`, `recoveryapp-metadata-helper` | собственные C-процессы (`execv`, read-only, проверка размера) | собираются `build-app.sh` из `Packaging/*.c` | GPL-2 (`LICENSE`) | `Resources/LICENSE` | `Packaging/*.c` в source ZIP | PASS |
 | 3 | `recoveryapp-cli` | CLI для тестов/автоматизации; в `.app` НЕ входит | общий `RecoveryCore` | GPL-2 | — (не поставляется в `.app`) | `Sources/` в source ZIP | PASS |
 | 4 | Sleuth Kit 4.15.0 — `fls`, `mmls` | отдельные CLI-процессы (быстрый поиск/извлечение), запуск через `tool-launcher` (`execv`), без линковки libtsk | 4.15.0: `SOURCE.md`; релиз GitHub `sleuthkit-4.15.0` существует | CPL 1.0 + mixed (см. `LICENSES-README.md`) | `sleuthkit-CPL-1.0.txt`, `sleuthkit-LICENSES-README.md`, `sleuthkit-SOURCE.md` | `SourceArchives/sleuthkit-4.15.0-source.tar.gz` + `sleuthkit-preopened-fd.patch` | PASS — provenance доказан контрольной пересборкой TASK-016 (побайтное совпадение) |
-| 5 | Sleuth Kit 4.15.0 — `icat` | отдельный CLI-процесс (извлечение) | как выше | IBM Public License 1.0 + mixed | `sleuthkit-IPL-1.0.txt` | как выше | WARNING (provenance бинарников) |
+| 5 | Sleuth Kit 4.15.0 — `icat` | отдельный CLI-процесс (извлечение) | как выше | IBM Public License 1.0 + mixed | `sleuthkit-IPL-1.0.txt` | как выше | PASS — provenance TASK-016 |
 | 6 | PhotoRec 7.2 | отдельный CLI-процесс (глубокий сигнатурный поиск) | 7.2: `AC_INIT([testdisk],[7.2])` в архиве; cgsecurity.org подтверждает 7.2 (2024-02-22) | GPL v2 or later (`photorec-COPYING.txt`) | `photorec-COPYING.txt`, `photorec-SOURCE.md` | `SourceArchives/testdisk-7.2-source.tar.bz2` + `photorec-dev-fd.patch` | PASS — provenance доказан контрольной пересборкой TASK-016 (побайтное совпадение после подписи) |
-| 7 | libjpeg-turbo 3.2.0 | статически внутри `photorec` | 3.2.0: строка в бинарнике; релиз GitHub подтверждён | BSD-3-clause + IJG | `libjpeg-turbo-LICENSE.md`, `libjpeg-IJG-README.txt` (побайтно из архива) | `SourceArchives/libjpeg-turbo-3.2.0-source.tar.gz` | PASS (комплектность файлов); фактическая статическая связь с бинарником photorec — в рамках WARNING строки 6 |
-| 8 | untrunc | отдельный CLI-процесс (исправление видео) | `archive-9d86ec9` (TASK-016, строка в бинарнике); коммит `9d86ec9ef2ff…` подтверждён на GitHub; связь архива с коммитом UNVERIFIED | GPL-2 (`untrunc-COPYING.txt`) | `untrunc-COPYING.txt`, `untrunc-SOURCE.md` | `SourceArchives/untrunc-9d86ec9-source.tar.gz` | PASS — provenance доказан контрольной сборкой TASK-016; связь архива с коммитом UNVERIFIED |
+| 7 | libjpeg-turbo 3.2.0 | статически внутри `photorec` | 3.2.0: строка в бинарнике; релиз GitHub подтверждён | BSD-3-clause + IJG | `libjpeg-turbo-LICENSE.md`, `libjpeg-IJG-README.txt` (побайтно из архива) | `SourceArchives/libjpeg-turbo-3.2.0-source.tar.gz` | PASS (комплектность файлов); статическая связь подтверждена сборкой TASK-016 |
+| 8 | untrunc | отдельный CLI-процесс (исправление видео) | `archive-9d86ec9` (TASK-016, строка в бинарнике); коммит `9d86ec9ef2ff…` подтверждён на GitHub; содержимое архива сверено с коммитом 2026-10-07 | GPL-2 (`untrunc-COPYING.txt`) | `untrunc-COPYING.txt`, `untrunc-SOURCE.md` | `SourceArchives/untrunc-9d86ec9-source.tar.gz` | PASS — provenance доказан контрольной сборкой TASK-016; содержимое архива сверено с коммитом 2026-10-07 |
 | 9 | FFmpeg 8.1 | статически внутри `untrunc` (`libavformat`, `libavcodec`, `libavutil`) | 8.1: строка в бинарнике `ffmpeg '8.1'`; ffmpeg.org подтверждает ветку 8.1 | LGPL-2.1-or-later — подтверждено фактической конфигурацией сборки TASK-016 (`config.h`/`config.mak` в evidence: без GPL/nonfree, без внешних библиотек) | `ffmpeg-COPYING.LGPLv2.1.txt` | `SourceArchives/ffmpeg-8.1-source.tar.xz` + рецепт (Makefile + build-only патч) | PASS — фактическая конфигурация нового бинарника зафиксирована evidence |
 | 10 | dmgbuild 1.6.7, ds_store 1.3.3, mac_alias 2.2.3 (Python) | только среда сборки DMG (`Scripts/package-dmg.sh`); в `.app` и DMG не попадают | `ThirdParty/BuildTools/README.md`; лицензии `ThirdParty/BuildTools/licenses/` | MIT | — (не поставляются) | попадают в source ZIP через `ThirdParty/BuildTools` (без `__pycache__`) | PASS (build-tool) |
 | 11 | системные библиотеки macOS (`libz`, `libsqlite3`, `libncurses.5.4`, `libiconv`, `libc++`, `libSystem`) | динамические зависимости поставляемых CLI | `otool -L` | предоставляются macOS | поставка не требуется | поставка не требуется | PASS (N/A) |
@@ -46,8 +46,8 @@
 
 | Файл | SHA-256 |
 |---|---|
-| `Packaging/sleuthkit-preopened-fd.patch` | `259dfdb6e63c8868f5ff4ae2a5ae855d9c441d8c835d5f265317654418b461ff` |
-| `Packaging/photorec-dev-fd.patch` | `23f884cec48f10d43ed0d2c8ec011f29243819a5fa6294ab0da87e78e842d72b` |
+| `Packaging/sleuthkit-preopened-fd.patch` | `f0867d74d9f0385ee47c3d42df4c1988d5c8c74c6e60cd14956d3ea258468594` |
+| `Packaging/photorec-dev-fd.patch` | `47e3d5bc4c0dec549a0bb1723ac075d5c6dd02dbb3e1f5e9bf0bed245ae981d5` |
 | `ThirdParty/untrunc/FFMPEG-COPYING.LGPLv2.1.txt` (из архива FFmpeg 8.1 без изменений) | `246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30` |
 | `LICENSE` (GPL-2, RecoveryApp) | `d9310978058cc0def11befd94c85e484350322c746ed4dec3f3e03b04e60d295` |
 
@@ -89,10 +89,9 @@ ad-hoc подписи); untrunc пересобран из прикладывае
   `licenses/IBM-LICENSE`, `licenses/README.md` исходного архива (`cmp`). PASS.
 - IBM copyright-строка: сохранена в `LICENSES-README.md`
   («Copyright (c) 1997,1998,1999, International Business Machines…»). PASS.
-- Disclaimer-формулировки (гарантии/ответственность upstream): обязательство
-  распространителя указано в этом документе и в пункте 2 выше; отдельного
-  файла-дисклеймера в `.app` нет — тексты лицензий CPL/IPL содержат
-  соответствующие разделы 5/6/7. WARNING (см. «Оставшиеся вопросы»).
+- Уведомления о гарантиях/ответственности upstream, авторстве изменений
+  и исходниках теперь включены в `Contents/Resources/THIRD-PARTY-NOTICES.txt`;
+  исходные тексты лицензий не изменялись.
 - Точный исходный архив: `sleuthkit-4.15.0-source.tar.gz`, SHA-256 совпадает
   с записью; релиз `sleuthkit-4.15.0` на GitHub существует (проверено
   2026-10-06, список из 6 assets недоступен для чтения — имя конкретного
@@ -147,9 +146,10 @@ FFmpeg в действующем бинарнике — LGPL-2.1-or-later» те
 теперь проверяются по SHA. Независимо остаётся ограничение идентичности
 исходного архива git-коммиту, описанное ниже.
 
-Ограничение идентичности архива untrunc: побайтное совпадение
-`untrunc-9d86ec9-source.tar.gz` с `git archive` коммита `9d86ec9` офлайн не
-проверялось (локального клона нет); содержимое согласовано с рецептом сборки.
+Проверка идентичности untrunc 2026-10-07: содержимое всех 53 файлов архива
+совпадает с официальным codeload-снимком коммита
+`9d86ec9ef2ffed1bf8131abe80742c0574db52b6`: пути и SHA-256 каждого файла
+одинаковы. Префиксы/метаданные tar.gz не являются исходным кодом.
 
 ## Внешние проверки (официальные источники, дата 2026-10-06)
 
@@ -167,7 +167,42 @@ FFmpeg в действующем бинарнике — LGPL-2.1-or-later» те
   коммит `9d86ec9ef2ffed1bf8131abe80742c0574db52b6` существует («hvc1: restore
   CRA seek points»).
 
-## Оставшиеся вопросы и блокеры
+## Повторная оценка условий поставки — 2026-10-07
+
+1. Provenance всех пяти инструментов подтверждён. Контрольные сборки после
+   добавления датированных комментариев дали те же бинарники до подписи,
+   что сборки TASK-016; после той же ad-hoc подписи все пять файлов также
+   побайтно совпали с установленными. Манифест обновлён после этой проверки.
+2. Патчи PhotoRec, untrunc и TSK добавляют уведомления об авторстве
+   RecoveryApp project и дате 2026-10-07 в каждый изменённый файл.
+   Функциональный код патчей не изменён; исходные copyright notices сохранены.
+3. `Packaging/THIRD-PARTY-NOTICES.txt` включён в `.app`: IBM copyright,
+   благодарность IJG, статическое использование FFmpeg, разделение лицензий,
+   гарантии/ответственность Contributors, авторство патчей и доступ к исходникам.
+   Лицензии требуют содержания уведомлений, а не имени файла DISCLAIMER.
+4. Соответствующий ZIP исходников нужно прикладывать к ТОМУ ЖЕ релизу рядом
+   с бинарниками. В нём есть полный код untrunc и FFmpeg плюс рецепты,
+   позволяющие пересобрать и перелинковать статический executable с изменённой
+   библиотекой (LGPL-2.1 §6(a)); динамическая линковка не единственный вариант.
+5. Содержимое архива untrunc соответствует указанному коммиту. Требование
+   двух побайтно одинаковых независимых сборок не заменяет условий лицензии
+   и не объявляется обязательным для публикации.
+6. По проверенным интерфейсам TSK (обычные CLI-аргументы, текст/байты,
+   без линковки или общих внутренних структур) модель соответствует аргументам
+   GNU GPL FAQ для отдельных программ. Это инженерная оценка, не судебная
+   гарантия; отсутствие формального заключения юриста не объявляется само
+   по себе блокером. При изменении интеграции повторить оценку.
+7. Другой Mac, отсутствие Developer ID/нотариализации и findings dmgbuild —
+   реальные ограничения установки/безопасности, а не лицензионные запреты.
+   Публиковать можно рассматривать только как тестовый prerelease с оговорками,
+   после проверки конкретного нового комплекта и решения владельца.
+
+Источники условий: GPL v2 §2(a), §3; LGPL-2.1 §6; CPL/IPL §3;
+https://www.gnu.org/licenses/gpl-faq.en.html#MereAggregation;
+https://opensource.org/license/CPL-1.0;
+https://opensource.org/license/ipl-1.0; https://ffmpeg.org/legal.html.
+
+## История ограничений TASK-015/016 (не текущий список блокеров)
 
 1. **Provenance TSK и PhotoRec — доказан контрольной пересборкой TASK-016.**
    Ранее (TASK-015) он был UNVERIFIED. Оба hardened-сценария проверяют
@@ -209,7 +244,7 @@ FFmpeg в действующем бинарнике — LGPL-2.1-or-later» те
 2026-10-06): собранный комплект `.app` и source ZIP **содержит** перечисленные
 в таблице файлы — полные тексты применимых лицензий (включая добавленные в
 TASK-015 `LICENSE` RecoveryApp и LGPL-2.1 для FFmpeg), уведомления, точные
-исходные архивы пяти компонентов и оба патча; включённые копии побайтно
+исходные архивы пяти компонентов и три патча; включённые копии побайтно
 совпадают с исходниками репозитория и архивами.
 
 Обновление TASK-016: все пять встроенных инструментов пересобраны из
@@ -219,16 +254,12 @@ TASK-015 `LICENSE` RecoveryApp и LGPL-2.1 для FFmpeg), уведомлени�
 манифест и evidence включены в комплект и проверяются
 `Scripts/test-toolchain-provenance.sh`.
 
-Что этот аудит НЕ утверждает:
+Что этот аудит НЕ утверждает (исторические формулировки уточнены 2026-10-07):
 
-- соответствие поставляемых бинарников приложенным исходникам/рецептам —
-  provenance TSK, PhotoRec, untrunc и фактические configure-флаги FFmpeg
-  остаются UNVERIFIED (вопросы 1–2);
-- комплектность как достаточность для распространения: этот аудит не выдаёт
-  разрешение на распространение, включая лабораторную тестовую раздачу;
-  решение о раздаче и закрытии открытых вопросов (вопросы 2–5) — за
-  координатором;
-- отсутствие необходимости юридической оценки по вопросам 2–3.
+- юридическое заключение о любых лицензиях, патентах и юрисдикциях;
+- готовность массового релиза или чистую установку на другом Mac;
+- отсутствие security-проблем в vendored dmgbuild по факту создания DMG.
 
-Статус UNVERIFIED — честный итог аудита в его границах; для его снятия
-перечислены конкретные следующие шаги.
+Общего запрета на комплект независимых программ не установлено; публикация
+остается отдельным решением владельца, а соответствующий ZIP исходников и
+уведомления должны сопровождать новый бинарный пакет.

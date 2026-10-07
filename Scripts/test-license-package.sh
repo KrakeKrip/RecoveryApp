@@ -18,6 +18,7 @@ fail() {
 
 # (файл в .app, исходник в репозитории) — побайтное совпадение обязательно.
 required_copies=(
+    "Contents/Resources/THIRD-PARTY-NOTICES.txt:$project_dir/Packaging/THIRD-PARTY-NOTICES.txt"
     "Contents/Resources/LICENSE:$project_dir/LICENSE"
     "Contents/Resources/Tools/untrunc-COPYING.txt:$project_dir/ThirdParty/untrunc/COPYING"
     "Contents/Resources/Tools/untrunc-SOURCE.md:$project_dir/ThirdParty/untrunc/SOURCE.md"

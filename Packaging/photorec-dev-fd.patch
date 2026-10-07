@@ -1,5 +1,7 @@
 --- a/src/hdaccess.c
 +++ b/src/hdaccess.c
+@@ -0,0 +1 @@
++/* Modified by RecoveryApp project, 2026-10-07: inherited read-only FD support. */
 @@ -53,6 +53,7 @@
  #endif
  #include <stdio.h>

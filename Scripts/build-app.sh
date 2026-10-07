@@ -88,6 +88,7 @@ cp "$project_dir/ThirdParty/untrunc/FFMPEG-COPYING.LGPLv2.1.txt" "$app_dir/Conte
 cp "$project_dir/Packaging/photorec-dev-fd.patch" "$app_dir/Contents/Resources/SourceArchives/"
 # Текст лицензии самого RecoveryApp (GPL-2) поставляется вместе с бинарником.
 cp "$project_dir/LICENSE" "$app_dir/Contents/Resources/LICENSE"
+cp "$project_dir/Packaging/THIRD-PARTY-NOTICES.txt" "$app_dir/Contents/Resources/THIRD-PARTY-NOTICES.txt"
 cp "$project_dir/outputs/testdisk-7.2-source.tar.bz2" "$app_dir/Contents/Resources/SourceArchives/"
 cp "$project_dir/outputs/libjpeg-turbo-3.2.0-source.tar.gz" "$app_dir/Contents/Resources/SourceArchives/"
 cp "$project_dir/outputs/sleuthkit-4.15.0-source.tar.gz" "$app_dir/Contents/Resources/SourceArchives/"

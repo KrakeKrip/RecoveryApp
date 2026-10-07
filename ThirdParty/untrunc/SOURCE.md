@@ -13,8 +13,10 @@
 - Архив исходников: `outputs/untrunc-9d86ec9-source.tar.gz`, SHA-256
   `a46bbb0013b274cd239b0fe037cdf175e6865d62119e78f6f8d8684efbeaa8dc`; из
   НЕГО собран действующий бинарник (цепочка в
-  `ThirdParty/BUILD-PROVENANCE.json`). Побайтное совпадение архива с
-  `git archive` коммита `9d86ec9` офлайн не проверялось — UNVERIFIED.
+  `ThirdParty/BUILD-PROVENANCE.json`). 2026-10-07 содержимое всех 53 файлов
+  сверено с официальным codeload-снимком указанного коммита: отсутствующих,
+  добавленных путей и различий SHA-256 файлов нет. Префиксы и метаданные
+  tar.gz отличаются и не сравниваются как исходный код.
 - FFmpeg: 8.1, собран из `outputs/ffmpeg-8.1-source.tar.xz`
   (`b072aed6…`) тем же проходом; фактическая конфигурация зафисирована
   evidence (`docs/build-evidence/TASK-016/untrunc-ffmpeg-config.h`,

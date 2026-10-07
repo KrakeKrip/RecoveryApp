@@ -17,7 +17,7 @@ ffmpeg_archive="$project_dir/outputs/ffmpeg-8.1-source.tar.xz"
 patch_file="$project_dir/Packaging/untrunc-local-archive-build.patch"
 expected_untrunc_sha="a46bbb0013b274cd239b0fe037cdf175e6865d62119e78f6f8d8684efbeaa8dc"
 expected_ffmpeg_sha="b072aed6871998cce9b36e7774033105ca29e33632be5b6347f3206898e0756a"
-expected_patch_sha="fc4a2b22c91c2da065ba5f6d12e2822a8f976aa52b4c1cece292a6427f4e4c68"
+expected_patch_sha="e4691e33dc01c76d594988b6ffb237b715478db94c05687f1a7bbd36793eb9f5"
 destination="$project_dir/ThirdParty/untrunc/bin/arm64"
 stage_dir="${STAGE_DIR:-}"
 # Фиксированный собственный рабочий каталог внутри проекта.

@@ -15,3 +15,9 @@ RecoveryApp пока распространяется без платной по
 
 RecoveryApp читает выбранный накопитель только для чтения. Сохраняйте результат
 в отдельную папку на другом физическом диске.
+
+Лицензии и уведомления: внутри RecoveryApp.app → Contents → Resources →
+THIRD-PARTY-NOTICES.txt (Finder → «Показать содержимое пакета»).
+Соответствующий ZIP исходников предоставляется рядом с приложением в том же
+релизе: https://github.com/KrakeKrip/RecoveryApp/releases.
+This software is based in part on the work of the Independent JPEG Group.

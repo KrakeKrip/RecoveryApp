@@ -1,5 +1,7 @@
 --- a/tsk/img/raw.c
 +++ b/tsk/img/raw.c
+@@ -0,0 +1 @@
++/* Modified by RecoveryApp project, 2026-10-07: inherited read-only FD support. */
 @@ -105,2 +105 @@
 -        if ((cimg->fd =
 -                open(raw_info->img_info.images[idx], O_RDONLY | O_BINARY)) < 0) {
@@ -12,6 +14,8 @@
 +        cimg->seek_pos = -1;
 --- a/tsk/util/file_system_utils.h
 +++ b/tsk/util/file_system_utils.h
+@@ -0,0 +1 @@
++/* Modified by RecoveryApp project, 2026-10-07: inherited read-only FD support. */
 @@ -17,0 +18,4 @@
 +#ifndef TSK_WIN32
 +extern int raw_open_readonly(const char *path);
@@ -19,6 +23,8 @@
 +
 --- a/tsk/util/file_system_utils.c
 +++ b/tsk/util/file_system_utils.c
+@@ -0,0 +1 @@
++/* Modified by RecoveryApp project, 2026-10-07: inherited read-only FD support. */
 @@ -52,0 +53,29 @@
 +#ifndef TSK_WIN32
 +#include <errno.h>

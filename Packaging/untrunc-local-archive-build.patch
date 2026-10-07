@@ -1,5 +1,7 @@
 --- a/Makefile
 +++ b/Makefile
+@@ -0,0 +1 @@
++# Modified by RecoveryApp project, 2026-10-07: local FFmpeg archive and explicit version.
 @@ -75 +75,4 @@
 -VER = $(shell test -d .git && command -v git >/dev/null && echo "v`git rev-list --count HEAD`-`git describe --always --dirty --abbrev=7`")
 +# TASK-016 build-only: сборка идёт из прикладываемого архива снимка

@@ -1,0 +1,81 @@
+RecoveryApp — third-party notices / уведомления
+==============================================
+Updated: 2026-10-07. Distributor and local patch originator: RecoveryApp project
+(https://github.com/KrakeKrip/RecoveryApp).
+
+RecoveryApp and its own helpers: GNU GPL version 2. The complete bundle is not
+relicensed under one license: each third-party component retains its own terms.
+The notices below supplement, and do not replace or restrict, the supplied licenses.
+
+The Sleuth Kit 4.15.0: fls, mmls, icat
+-----------------------------------
+These are separate executables, not libraries linked into RecoveryApp.
+CPL 1.0 / IBM Public License 1.0 and other component terms apply; full texts and
+copyright overview are in Contents/Resources/Tools/sleuthkit-*.txt and
+sleuthkit-LICENSES-README.md. All upstream notices remain intact.
+
+Copyright (c) 1997,1998,1999, International Business Machines
+Corporation and others. All Rights Reserved.
+Copyright (c) 2002-2003 Brian Carrier, @stake Inc. All rights reserved.
+Copyright (c) 2003-2005 Brian Carrier. All rights reserved.
+Copyright (c) 2006-2011 Brian Carrier, Basis Technology. All Rights reserved.
+Additional copyright notices are retained in the source archive and license overview.
+
+RecoveryApp project modifications: Packaging/sleuthkit-preopened-fd.patch adds
+inherited read-only descriptor support (dup and explicit seek). Changed files:
+tsk/img/raw.c, tsk/util/file_system_utils.c and .h. Dated modification notices
+were added on 2026-10-07. The modifications remain under the applicable upstream
+licenses; no additional restrictions are imposed.
+
+The Sleuth Kit is provided AS IS. To the extent permitted by applicable law,
+on behalf of all Contributors, all express or implied warranties and conditions
+are disclaimed, including title, non-infringement, merchantability and fitness
+for a particular purpose. To that extent, all liability of Contributors for
+direct, indirect, special, incidental or consequential damages, including lost
+profits, is excluded. Any differing terms offered by this distributor alone
+are not offered by any other Contributor. See the complete CPL/IPL terms.
+
+PhotoRec 7.2 and libjpeg-turbo 3.2.0
+---------------------------------
+PhotoRec: GNU GPL version 2 or later. Local modification to src/hdaccess.c:
+Packaging/photorec-dev-fd.patch, inherited read-only descriptor support;
+modification notice added by RecoveryApp project on 2026-10-07.
+libjpeg-turbo is linked statically into PhotoRec; its IJG/BSD license notices
+are supplied in Tools/libjpeg-turbo-LICENSE.md and libjpeg-IJG-README.txt.
+
+This software is based in part on the work of the Independent JPEG Group.
+
+untrunc and FFmpeg 8.1
+--------------------
+untrunc source snapshot: 9d86ec9ef2ffed1bf8131abe80742c0574db52b6, GNU GPL v2.
+FFmpeg libavformat/libavcodec/libavutil are linked statically into untrunc.
+The supplied FFmpeg configuration is LGPL version 2.1 or later (without
+GPL/nonfree options). Full LGPL text: Tools/ffmpeg-COPYING.LGPLv2.1.txt;
+untrunc GPL text: Tools/untrunc-COPYING.txt. Upstream copyright notices remain
+in the accompanying sources. No restriction is imposed on modification or
+reverse engineering for debugging such modifications under the applicable licenses.
+The complete sources and build scripts allow rebuilding with a modified FFmpeg.
+
+RecoveryApp project changed the untrunc Makefile to use a local FFmpeg archive
+and an explicit archive version. Build-only patch:
+Packaging/untrunc-local-archive-build.patch; modification notice added 2026-10-07.
+
+Obtaining corresponding source / получение исходников
+-----------------------------------------------------
+The distributor provides the corresponding source ZIP alongside the application
+at https://github.com/KrakeKrip/RecoveryApp/releases. It contains RecoveryApp,
+helper and dependency sources, exact archives, local patches and build scripts.
+Use the source ZIP attached to the SAME release, not the current main branch
+or GitHub's automatically generated source archive of a different revision.
+No promise of a future written-source offer is substituted for the supplied sources.
+
+Dependency archives and patches are also inside RecoveryApp.app at
+Contents/Resources/SourceArchives. Full component notices: Contents/Resources/Tools;
+RecoveryApp license: Contents/Resources/LICENSE. Recipes, actual FFmpeg configuration
+and toolchain evidence are supplied in the source ZIP. See docs/DEVELOPMENT.md,
+docs/TOOLCHAIN_PROVENANCE.md and ThirdParty/BUILD-PROVENANCE.json.
+
+Исходники и патчи включены в пакет; разделение лицензий сохраняется.
+Восстановление данных не гарантируется. Уведомления об отсутствии гарантий и
+ответственности действуют только в пределах, допускаемых применимым законом.
+Этот текст не является юридическим заключением и не отменяет ваших прав по лицензиям.

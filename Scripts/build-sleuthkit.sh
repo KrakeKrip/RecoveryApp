@@ -13,7 +13,7 @@ project_dir="${0:A:h:h}"
 source_archive="$project_dir/outputs/sleuthkit-4.15.0-source.tar.gz"
 patch_file="$project_dir/Packaging/sleuthkit-preopened-fd.patch"
 expected_archive_sha="3a8c1e7d18a9b81f3e5e8aa78313974aceaafc6e051d636bc92cd7168286eca9"
-expected_patch_sha="259dfdb6e63c8868f5ff4ae2a5ae855d9c441d8c835d5f265317654418b461ff"
+expected_patch_sha="f0867d74d9f0385ee47c3d42df4c1988d5c8c74c6e60cd14956d3ea258468594"
 destination="$project_dir/ThirdParty/sleuthkit/bin/arm64"
 stage_dir="${STAGE_DIR:-}"
 # Рабочий каталог — фиксированный собственный путь внутри проекта;

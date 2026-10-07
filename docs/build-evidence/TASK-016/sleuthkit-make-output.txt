@@ -11,35 +11,711 @@ Making all in base
 /bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_parse.lo -MD -MP -MF .deps/tsk_parse.Tpo -c -o tsk_parse.lo tsk_parse.c
 /bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_printf.lo -MD -MP -MF .deps/tsk_printf.Tpo -c -o tsk_printf.lo tsk_printf.c
 /bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_unicode.lo -MD -MP -MF .deps/tsk_unicode.Tpo -c -o tsk_unicode.lo tsk_unicode.c
-libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT md5c.lo -MD -MP -MF .deps/md5c.Tpo -c md5c.c -o md5c.o
 libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT crc.lo -MD -MP -MF .deps/crc.Tpo -c crc.c -o crc.o
-libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_error.lo -MD -MP -MF .deps/tsk_error.Tpo -c tsk_error.c -o tsk_error.o
-libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mymalloc.lo -MD -MP -MF .deps/mymalloc.Tpo -c mymalloc.c -o mymalloc.o
 libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_endian.lo -MD -MP -MF .deps/tsk_endian.Tpo -c tsk_endian.c -o tsk_endian.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mymalloc.lo -MD -MP -MF .deps/mymalloc.Tpo -c mymalloc.c -o mymalloc.o
 libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT sha1c.lo -MD -MP -MF .deps/sha1c.Tpo -c sha1c.c -o sha1c.o
-libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_unicode.lo -MD -MP -MF .deps/tsk_unicode.Tpo -c tsk_unicode.c -o tsk_unicode.o
-libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_parse.lo -MD -MP -MF .deps/tsk_parse.Tpo -c tsk_parse.c -o tsk_parse.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT md5c.lo -MD -MP -MF .deps/md5c.Tpo -c md5c.c -o md5c.o
 libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_list.lo -MD -MP -MF .deps/tsk_list.Tpo -c tsk_list.c -o tsk_list.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_parse.lo -MD -MP -MF .deps/tsk_parse.Tpo -c tsk_parse.c -o tsk_parse.o
 libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_printf.lo -MD -MP -MF .deps/tsk_printf.Tpo -c tsk_printf.c -o tsk_printf.o
-mv -f .deps/mymalloc.Tpo .deps/mymalloc.Plo
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_error.lo -MD -MP -MF .deps/tsk_error.Tpo -c tsk_error.c -o tsk_error.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_unicode.lo -MD -MP -MF .deps/tsk_unicode.Tpo -c tsk_unicode.c -o tsk_unicode.o
 mv -f .deps/crc.Tpo .deps/crc.Plo
-mv -f .deps/tsk_list.Tpo .deps/tsk_list.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_version.lo -MD -MP -MF .deps/tsk_version.Tpo -c -o tsk_version.lo tsk_version.c
 mv -f .deps/tsk_printf.Tpo .deps/tsk_printf.Plo
 mv -f .deps/tsk_parse.Tpo .deps/tsk_parse.Plo
-mv -f .deps/tsk_error.Tpo .deps/tsk_error.Plo
+mv -f .deps/tsk_list.Tpo .deps/tsk_list.Plo
 mv -f .deps/tsk_endian.Tpo .deps/tsk_endian.Plo
-...[обрезано]...
-libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o callback_style callback-style.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
-libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o posix_style posix-style.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+mv -f .deps/mymalloc.Tpo .deps/mymalloc.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_stack.lo -MD -MP -MF .deps/tsk_stack.Tpo -c -o tsk_stack.lo tsk_stack.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT XGetopt.lo -MD -MP -MF .deps/XGetopt.Tpo -c -o XGetopt.lo XGetopt.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_lock.lo -MD -MP -MF .deps/tsk_lock.Tpo -c -o tsk_lock.lo tsk_lock.c
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_error_win32.lo -MD -MP -MF .deps/tsk_error_win32.Tpo -c -o tsk_error_win32.lo tsk_error_win32.cpp
+mv -f .deps/tsk_error.Tpo .deps/tsk_error.Plo
+mv -f .deps/md5c.Tpo .deps/md5c.Plo
+mv -f .deps/tsk_unicode.Tpo .deps/tsk_unicode.Plo
+mv -f .deps/sha1c.Tpo .deps/sha1c.Plo
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_version.lo -MD -MP -MF .deps/tsk_version.Tpo -c tsk_version.c -o tsk_version.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_stack.lo -MD -MP -MF .deps/tsk_stack.Tpo -c tsk_stack.c -o tsk_stack.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT XGetopt.lo -MD -MP -MF .deps/XGetopt.Tpo -c XGetopt.c -o XGetopt.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_lock.lo -MD -MP -MF .deps/tsk_lock.Tpo -c tsk_lock.c -o tsk_lock.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_error_win32.lo -MD -MP -MF .deps/tsk_error_win32.Tpo -c tsk_error_win32.cpp -o tsk_error_win32.o
+mv -f .deps/tsk_version.Tpo .deps/tsk_version.Plo
+mv -f .deps/tsk_stack.Tpo .deps/tsk_stack.Plo
+mv -f .deps/XGetopt.Tpo .deps/XGetopt.Plo
+mv -f .deps/tsk_lock.Tpo .deps/tsk_lock.Plo
+mv -f .deps/tsk_error_win32.Tpo .deps/tsk_error_win32.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o libtskbase.la  md5c.lo mymalloc.lo sha1c.lo crc.lo tsk_endian.lo tsk_error.lo tsk_list.lo tsk_parse.lo tsk_printf.lo tsk_unicode.lo tsk_version.lo tsk_stack.lo XGetopt.lo tsk_lock.lo tsk_error_win32.lo  -lz -lsqlite3 -ldl -lstdc++
+libtool: link: ar cr .libs/libtskbase.a  md5c.o mymalloc.o sha1c.o crc.o tsk_endian.o tsk_error.o tsk_list.o tsk_parse.o tsk_printf.o tsk_unicode.o tsk_version.o tsk_stack.o XGetopt.o tsk_lock.o tsk_error_win32.o
+libtool: link: ranlib .libs/libtskbase.a
+libtool: link: ( cd ".libs" && rm -f "libtskbase.la" && ln -s "../libtskbase.la" "libtskbase.la" )
+Making all in img
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT img_open.lo -MD -MP -MF .deps/img_open.Tpo -c -o img_open.lo img_open.cpp
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT img_types.lo -MD -MP -MF .deps/img_types.Tpo -c -o img_types.lo img_types.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT raw.lo -MD -MP -MF .deps/raw.Tpo -c -o raw.lo raw.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT logical_img.lo -MD -MP -MF .deps/logical_img.Tpo -c -o logical_img.lo logical_img.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT aff.lo -MD -MP -MF .deps/aff.Tpo -c -o aff.lo aff.c
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ewf.lo -MD -MP -MF .deps/ewf.Tpo -c -o ewf.lo ewf.cpp
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT img_io.lo -MD -MP -MF .deps/img_io.Tpo -c -o img_io.lo img_io.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mult_files.lo -MD -MP -MF .deps/mult_files.Tpo -c -o mult_files.lo mult_files.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT vhd.lo -MD -MP -MF .deps/vhd.Tpo -c -o vhd.lo vhd.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT vmdk.lo -MD -MP -MF .deps/vmdk.Tpo -c -o vmdk.lo vmdk.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT logical_img.lo -MD -MP -MF .deps/logical_img.Tpo -c logical_img.c -o logical_img.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT vhd.lo -MD -MP -MF .deps/vhd.Tpo -c vhd.c -o vhd.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT img_types.lo -MD -MP -MF .deps/img_types.Tpo -c img_types.c -o img_types.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT aff.lo -MD -MP -MF .deps/aff.Tpo -c aff.c -o aff.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT raw.lo -MD -MP -MF .deps/raw.Tpo -c raw.c -o raw.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mult_files.lo -MD -MP -MF .deps/mult_files.Tpo -c mult_files.c -o mult_files.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ewf.lo -MD -MP -MF .deps/ewf.Tpo -c ewf.cpp -o ewf.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT vmdk.lo -MD -MP -MF .deps/vmdk.Tpo -c vmdk.c -o vmdk.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT img_io.lo -MD -MP -MF .deps/img_io.Tpo -c img_io.c -o img_io.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT img_open.lo -MD -MP -MF .deps/img_open.Tpo -c img_open.cpp -o img_open.o
+mv -f .deps/aff.Tpo .deps/aff.Plo
+mv -f .deps/vhd.Tpo .deps/vhd.Plo
+mv -f .deps/img_types.Tpo .deps/img_types.Plo
+mv -f .deps/logical_img.Tpo .deps/logical_img.Plo
+mv -f .deps/ewf.Tpo .deps/ewf.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT img_writer.lo -MD -MP -MF .deps/img_writer.Tpo -c -o img_writer.lo img_writer.cpp
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT unsupported_types.lo -MD -MP -MF .deps/unsupported_types.Tpo -c -o unsupported_types.lo unsupported_types.c
+mv -f .deps/mult_files.Tpo .deps/mult_files.Plo
+mv -f .deps/vmdk.Tpo .deps/vmdk.Plo
+mv -f .deps/img_open.Tpo .deps/img_open.Plo
+mv -f .deps/img_io.Tpo .deps/img_io.Plo
+mv -f .deps/raw.Tpo .deps/raw.Plo
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT unsupported_types.lo -MD -MP -MF .deps/unsupported_types.Tpo -c unsupported_types.c -o unsupported_types.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT img_writer.lo -MD -MP -MF .deps/img_writer.Tpo -c img_writer.cpp -o img_writer.o
+mv -f .deps/unsupported_types.Tpo .deps/unsupported_types.Plo
+mv -f .deps/img_writer.Tpo .deps/img_writer.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o libtskimg.la  img_open.lo img_types.lo raw.lo logical_img.lo aff.lo ewf.lo img_io.lo mult_files.lo vhd.lo vmdk.lo img_writer.lo unsupported_types.lo  -lz -lsqlite3 -ldl -lstdc++
+libtool: link: ar cr .libs/libtskimg.a  img_open.o img_types.o raw.o logical_img.o aff.o ewf.o img_io.o mult_files.o vhd.o vmdk.o img_writer.o unsupported_types.o
+libtool: link: ranlib .libs/libtskimg.a
+libtool: link: ( cd ".libs" && rm -f "libtskimg.la" && ln -s "../libtskimg.la" "libtskimg.la" )
+Making all in vs
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mm_open.lo -MD -MP -MF .deps/mm_open.Tpo -c -o mm_open.lo mm_open.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mm_part.lo -MD -MP -MF .deps/mm_part.Tpo -c -o mm_part.lo mm_part.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mm_types.lo -MD -MP -MF .deps/mm_types.Tpo -c -o mm_types.lo mm_types.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mm_io.lo -MD -MP -MF .deps/mm_io.Tpo -c -o mm_io.lo mm_io.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT bsd.lo -MD -MP -MF .deps/bsd.Tpo -c -o bsd.lo bsd.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT dos.lo -MD -MP -MF .deps/dos.Tpo -c -o dos.lo dos.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT gpt.lo -MD -MP -MF .deps/gpt.Tpo -c -o gpt.lo gpt.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mac.lo -MD -MP -MF .deps/mac.Tpo -c -o mac.lo mac.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT sun.lo -MD -MP -MF .deps/sun.Tpo -c -o sun.lo sun.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mm_types.lo -MD -MP -MF .deps/mm_types.Tpo -c mm_types.c -o mm_types.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mm_part.lo -MD -MP -MF .deps/mm_part.Tpo -c mm_part.c -o mm_part.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mm_open.lo -MD -MP -MF .deps/mm_open.Tpo -c mm_open.c -o mm_open.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mac.lo -MD -MP -MF .deps/mac.Tpo -c mac.c -o mac.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT bsd.lo -MD -MP -MF .deps/bsd.Tpo -c bsd.c -o bsd.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT dos.lo -MD -MP -MF .deps/dos.Tpo -c dos.c -o dos.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT gpt.lo -MD -MP -MF .deps/gpt.Tpo -c gpt.c -o gpt.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT mm_io.lo -MD -MP -MF .deps/mm_io.Tpo -c mm_io.c -o mm_io.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT sun.lo -MD -MP -MF .deps/sun.Tpo -c sun.c -o sun.o
+mv -f .deps/mm_io.Tpo .deps/mm_io.Plo
+mv -f .deps/mm_types.Tpo .deps/mm_types.Plo
+mv -f .deps/bsd.Tpo .deps/bsd.Plo
+mv -f .deps/mm_part.Tpo .deps/mm_part.Plo
+mv -f .deps/mm_open.Tpo .deps/mm_open.Plo
+mv -f .deps/mac.Tpo .deps/mac.Plo
+mv -f .deps/sun.Tpo .deps/sun.Plo
+mv -f .deps/gpt.Tpo .deps/gpt.Plo
+mv -f .deps/dos.Tpo .deps/dos.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=link gcc -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o libtskvs.la  mm_open.lo mm_part.lo mm_types.lo mm_io.lo bsd.lo dos.lo gpt.lo mac.lo sun.lo  -lz -lsqlite3 -ldl -lstdc++
+libtool: link: ar cr .libs/libtskvs.a  mm_open.o mm_part.o mm_types.o mm_io.o bsd.o dos.o gpt.o mac.o sun.o
+libtool: link: ranlib .libs/libtskvs.a
+libtool: link: ( cd ".libs" && rm -f "libtskvs.la" && ln -s "../libtskvs.la" "libtskvs.la" )
+Making all in fs
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_inode.lo -MD -MP -MF .deps/fs_inode.Tpo -c -o fs_inode.lo fs_inode.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_io.lo -MD -MP -MF .deps/fs_io.Tpo -c -o fs_io.lo fs_io.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_block.lo -MD -MP -MF .deps/fs_block.Tpo -c -o fs_block.lo fs_block.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_open.lo -MD -MP -MF .deps/fs_open.Tpo -c -o fs_open.lo fs_open.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_name.lo -MD -MP -MF .deps/fs_name.Tpo -c -o fs_name.lo fs_name.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_dir.lo -MD -MP -MF .deps/fs_dir.Tpo -c -o fs_dir.lo fs_dir.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_types.lo -MD -MP -MF .deps/fs_types.Tpo -c -o fs_types.lo fs_types.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_attr.lo -MD -MP -MF .deps/fs_attr.Tpo -c -o fs_attr.lo fs_attr.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_attrlist.lo -MD -MP -MF .deps/fs_attrlist.Tpo -c -o fs_attrlist.lo fs_attrlist.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_load.lo -MD -MP -MF .deps/fs_load.Tpo -c -o fs_load.lo fs_load.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_io.lo -MD -MP -MF .deps/fs_io.Tpo -c fs_io.c -o fs_io.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_name.lo -MD -MP -MF .deps/fs_name.Tpo -c fs_name.c -o fs_name.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_attr.lo -MD -MP -MF .deps/fs_attr.Tpo -c fs_attr.c -o fs_attr.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_attrlist.lo -MD -MP -MF .deps/fs_attrlist.Tpo -c fs_attrlist.c -o fs_attrlist.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_block.lo -MD -MP -MF .deps/fs_block.Tpo -c fs_block.c -o fs_block.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_open.lo -MD -MP -MF .deps/fs_open.Tpo -c fs_open.c -o fs_open.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_inode.lo -MD -MP -MF .deps/fs_inode.Tpo -c fs_inode.c -o fs_inode.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_load.lo -MD -MP -MF .deps/fs_load.Tpo -c fs_load.c -o fs_load.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_dir.lo -MD -MP -MF .deps/fs_dir.Tpo -c fs_dir.c -o fs_dir.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_types.lo -MD -MP -MF .deps/fs_types.Tpo -c fs_types.c -o fs_types.o
+mv -f .deps/fs_load.Tpo .deps/fs_load.Plo
+mv -f .deps/fs_open.Tpo .deps/fs_open.Plo
+mv -f .deps/fs_types.Tpo .deps/fs_types.Plo
+mv -f .deps/fs_block.Tpo .deps/fs_block.Plo
+mv -f .deps/fs_inode.Tpo .deps/fs_inode.Plo
+mv -f .deps/fs_io.Tpo .deps/fs_io.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_parse.lo -MD -MP -MF .deps/fs_parse.Tpo -c -o fs_parse.lo fs_parse.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_file.lo -MD -MP -MF .deps/fs_file.Tpo -c -o fs_file.lo fs_file.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT unix_misc.lo -MD -MP -MF .deps/unix_misc.Tpo -c -o unix_misc.lo unix_misc.c
+mv -f .deps/fs_attrlist.Tpo .deps/fs_attrlist.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT nofs_misc.lo -MD -MP -MF .deps/nofs_misc.Tpo -c -o nofs_misc.lo nofs_misc.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ffs.lo -MD -MP -MF .deps/ffs.Tpo -c -o ffs.lo ffs.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ffs_dent.lo -MD -MP -MF .deps/ffs_dent.Tpo -c -o ffs_dent.lo ffs_dent.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ext2fs.lo -MD -MP -MF .deps/ext2fs.Tpo -c -o ext2fs.lo ext2fs.c
+mv -f .deps/fs_name.Tpo .deps/fs_name.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ext2fs_dent.lo -MD -MP -MF .deps/ext2fs_dent.Tpo -c -o ext2fs_dent.lo ext2fs_dent.c
+mv -f .deps/fs_attr.Tpo .deps/fs_attr.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ext2fs_journal.lo -MD -MP -MF .deps/ext2fs_journal.Tpo -c -o ext2fs_journal.lo ext2fs_journal.c
+mv -f .deps/fs_dir.Tpo .deps/fs_dir.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatfs.lo -MD -MP -MF .deps/fatfs.Tpo -c -o fatfs.lo fatfs.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_parse.lo -MD -MP -MF .deps/fs_parse.Tpo -c fs_parse.c -o fs_parse.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fs_file.lo -MD -MP -MF .deps/fs_file.Tpo -c fs_file.c -o fs_file.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT nofs_misc.lo -MD -MP -MF .deps/nofs_misc.Tpo -c nofs_misc.c -o nofs_misc.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ffs_dent.lo -MD -MP -MF .deps/ffs_dent.Tpo -c ffs_dent.c -o ffs_dent.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT unix_misc.lo -MD -MP -MF .deps/unix_misc.Tpo -c unix_misc.c -o unix_misc.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ffs.lo -MD -MP -MF .deps/ffs.Tpo -c ffs.c -o ffs.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ext2fs.lo -MD -MP -MF .deps/ext2fs.Tpo -c ext2fs.c -o ext2fs.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ext2fs_dent.lo -MD -MP -MF .deps/ext2fs_dent.Tpo -c ext2fs_dent.c -o ext2fs_dent.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ext2fs_journal.lo -MD -MP -MF .deps/ext2fs_journal.Tpo -c ext2fs_journal.c -o ext2fs_journal.o
+mv -f .deps/fs_parse.Tpo .deps/fs_parse.Plo
+mv -f .deps/nofs_misc.Tpo .deps/nofs_misc.Plo
+mv -f .deps/ffs_dent.Tpo .deps/ffs_dent.Plo
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatfs.lo -MD -MP -MF .deps/fatfs.Tpo -c fatfs.c -o fatfs.o
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatfs_meta.lo -MD -MP -MF .deps/fatfs_meta.Tpo -c -o fatfs_meta.lo fatfs_meta.c
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatfs_dent.lo -MD -MP -MF .deps/fatfs_dent.Tpo -c -o fatfs_dent.lo fatfs_dent.cpp
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatxxfs.lo -MD -MP -MF .deps/fatxxfs.Tpo -c -o fatxxfs.lo fatxxfs.c
+mv -f .deps/unix_misc.Tpo .deps/unix_misc.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatxxfs_meta.lo -MD -MP -MF .deps/fatxxfs_meta.Tpo -c -o fatxxfs_meta.lo fatxxfs_meta.c
+mv -f .deps/fs_file.Tpo .deps/fs_file.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatxxfs_dent.lo -MD -MP -MF .deps/fatxxfs_dent.Tpo -c -o fatxxfs_dent.lo fatxxfs_dent.c
+mv -f .deps/ext2fs_dent.Tpo .deps/ext2fs_dent.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT exfatfs.lo -MD -MP -MF .deps/exfatfs.Tpo -c -o exfatfs.lo exfatfs.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatxxfs.lo -MD -MP -MF .deps/fatxxfs.Tpo -c fatxxfs.c -o fatxxfs.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatfs_meta.lo -MD -MP -MF .deps/fatfs_meta.Tpo -c fatfs_meta.c -o fatfs_meta.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatxxfs_dent.lo -MD -MP -MF .deps/fatxxfs_dent.Tpo -c fatxxfs_dent.c -o fatxxfs_dent.o
+mv -f .deps/ext2fs_journal.Tpo .deps/ext2fs_journal.Plo
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatfs_dent.lo -MD -MP -MF .deps/fatfs_dent.Tpo -c fatfs_dent.cpp -o fatfs_dent.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatxxfs_meta.lo -MD -MP -MF .deps/fatxxfs_meta.Tpo -c fatxxfs_meta.c -o fatxxfs_meta.o
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT exfatfs_meta.lo -MD -MP -MF .deps/exfatfs_meta.Tpo -c -o exfatfs_meta.lo exfatfs_meta.c
+mv -f .deps/fatfs.Tpo .deps/fatfs.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT exfatfs_dent.lo -MD -MP -MF .deps/exfatfs_dent.Tpo -c -o exfatfs_dent.lo exfatfs_dent.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT exfatfs.lo -MD -MP -MF .deps/exfatfs.Tpo -c exfatfs.c -o exfatfs.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT exfatfs_meta.lo -MD -MP -MF .deps/exfatfs_meta.Tpo -c exfatfs_meta.c -o exfatfs_meta.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT exfatfs_dent.lo -MD -MP -MF .deps/exfatfs_dent.Tpo -c exfatfs_dent.c -o exfatfs_dent.o
+mv -f .deps/fatxxfs_dent.Tpo .deps/fatxxfs_dent.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatfs_utils.lo -MD -MP -MF .deps/fatfs_utils.Tpo -c -o fatfs_utils.lo fatfs_utils.c
+mv -f .deps/fatxxfs.Tpo .deps/fatxxfs.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ntfs.lo -MD -MP -MF .deps/ntfs.Tpo -c -o ntfs.lo ntfs.c
+mv -f .deps/fatfs_meta.Tpo .deps/fatfs_meta.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ntfs_dent.lo -MD -MP -MF .deps/ntfs_dent.Tpo -c -o ntfs_dent.lo ntfs_dent.cpp
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fatfs_utils.lo -MD -MP -MF .deps/fatfs_utils.Tpo -c fatfs_utils.c -o fatfs_utils.o
+mv -f .deps/exfatfs.Tpo .deps/exfatfs.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT swapfs.lo -MD -MP -MF .deps/swapfs.Tpo -c -o swapfs.lo swapfs.c
+mv -f .deps/fatxxfs_meta.Tpo .deps/fatxxfs_meta.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT rawfs.lo -MD -MP -MF .deps/rawfs.Tpo -c -o rawfs.lo rawfs.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ntfs.lo -MD -MP -MF .deps/ntfs.Tpo -c ntfs.c -o ntfs.o
+mv -f .deps/exfatfs_dent.Tpo .deps/exfatfs_dent.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT iso9660.lo -MD -MP -MF .deps/iso9660.Tpo -c -o iso9660.lo iso9660.c
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ntfs_dent.lo -MD -MP -MF .deps/ntfs_dent.Tpo -c ntfs_dent.cpp -o ntfs_dent.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT swapfs.lo -MD -MP -MF .deps/swapfs.Tpo -c swapfs.c -o swapfs.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT rawfs.lo -MD -MP -MF .deps/rawfs.Tpo -c rawfs.c -o rawfs.o
+mv -f .deps/fatfs_utils.Tpo .deps/fatfs_utils.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT iso9660_dent.lo -MD -MP -MF .deps/iso9660_dent.Tpo -c -o iso9660_dent.lo iso9660_dent.c
+mv -f .deps/exfatfs_meta.Tpo .deps/exfatfs_meta.Plo
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT iso9660.lo -MD -MP -MF .deps/iso9660.Tpo -c iso9660.c -o iso9660.o
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hfs.lo -MD -MP -MF .deps/hfs.Tpo -c -o hfs.lo hfs.c
+mv -f .deps/swapfs.Tpo .deps/swapfs.Plo
+mv -f .deps/rawfs.Tpo .deps/rawfs.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hfs_dent.lo -MD -MP -MF .deps/hfs_dent.Tpo -c -o hfs_dent.lo hfs_dent.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hfs_journal.lo -MD -MP -MF .deps/hfs_journal.Tpo -c -o hfs_journal.lo hfs_journal.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT iso9660_dent.lo -MD -MP -MF .deps/iso9660_dent.Tpo -c iso9660_dent.c -o iso9660_dent.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hfs.lo -MD -MP -MF .deps/hfs.Tpo -c hfs.c -o hfs.o
+mv -f .deps/ffs.Tpo .deps/ffs.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hfs_unicompare.lo -MD -MP -MF .deps/hfs_unicompare.Tpo -c -o hfs_unicompare.lo hfs_unicompare.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hfs_journal.lo -MD -MP -MF .deps/hfs_journal.Tpo -c hfs_journal.c -o hfs_journal.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hfs_dent.lo -MD -MP -MF .deps/hfs_dent.Tpo -c hfs_dent.c -o hfs_dent.o
+mv -f .deps/ext2fs.Tpo .deps/ext2fs.Plo
+mv -f .deps/iso9660_dent.Tpo .deps/iso9660_dent.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT decmpfs.lo -MD -MP -MF .deps/decmpfs.Tpo -c -o decmpfs.lo decmpfs.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT lzvn.lo -MD -MP -MF .deps/lzvn.Tpo -c -o lzvn.lo lzvn.c
+mv -f .deps/fatfs_dent.Tpo .deps/fatfs_dent.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT dcalc_lib.lo -MD -MP -MF .deps/dcalc_lib.Tpo -c -o dcalc_lib.lo dcalc_lib.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hfs_unicompare.lo -MD -MP -MF .deps/hfs_unicompare.Tpo -c hfs_unicompare.c -o hfs_unicompare.o
+mv -f .deps/hfs_journal.Tpo .deps/hfs_journal.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT dcat_lib.lo -MD -MP -MF .deps/dcat_lib.Tpo -c -o dcat_lib.lo dcat_lib.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT decmpfs.lo -MD -MP -MF .deps/decmpfs.Tpo -c decmpfs.c -o decmpfs.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT lzvn.lo -MD -MP -MF .deps/lzvn.Tpo -c lzvn.c -o lzvn.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT dcalc_lib.lo -MD -MP -MF .deps/dcalc_lib.Tpo -c dcalc_lib.c -o dcalc_lib.o
+mv -f .deps/hfs_dent.Tpo .deps/hfs_dent.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT dls_lib.lo -MD -MP -MF .deps/dls_lib.Tpo -c -o dls_lib.lo dls_lib.c
+mv -f .deps/hfs_unicompare.Tpo .deps/hfs_unicompare.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT dstat_lib.lo -MD -MP -MF .deps/dstat_lib.Tpo -c -o dstat_lib.lo dstat_lib.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT dcat_lib.lo -MD -MP -MF .deps/dcat_lib.Tpo -c dcat_lib.c -o dcat_lib.o
+mv -f .deps/iso9660.Tpo .deps/iso9660.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ffind_lib.lo -MD -MP -MF .deps/ffind_lib.Tpo -c -o ffind_lib.lo ffind_lib.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT dls_lib.lo -MD -MP -MF .deps/dls_lib.Tpo -c dls_lib.c -o dls_lib.o
+mv -f .deps/dcalc_lib.Tpo .deps/dcalc_lib.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fls_lib.lo -MD -MP -MF .deps/fls_lib.Tpo -c -o fls_lib.lo fls_lib.c
+mv -f .deps/lzvn.Tpo .deps/lzvn.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT icat_lib.lo -MD -MP -MF .deps/icat_lib.Tpo -c -o icat_lib.lo icat_lib.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT dstat_lib.lo -MD -MP -MF .deps/dstat_lib.Tpo -c dstat_lib.c -o dstat_lib.o
+mv -f .deps/dcat_lib.Tpo .deps/dcat_lib.Plo
+mv -f .deps/decmpfs.Tpo .deps/decmpfs.Plo
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ifind_lib.lo -MD -MP -MF .deps/ifind_lib.Tpo -c -o ifind_lib.lo ifind_lib.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ils_lib.lo -MD -MP -MF .deps/ils_lib.Tpo -c -o ils_lib.lo ils_lib.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ffind_lib.lo -MD -MP -MF .deps/ffind_lib.Tpo -c ffind_lib.c -o ffind_lib.o
+mv -f .deps/dls_lib.Tpo .deps/dls_lib.Plo
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT icat_lib.lo -MD -MP -MF .deps/icat_lib.Tpo -c icat_lib.c -o icat_lib.o
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT usn_journal.lo -MD -MP -MF .deps/usn_journal.Tpo -c -o usn_journal.lo usn_journal.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT fls_lib.lo -MD -MP -MF .deps/fls_lib.Tpo -c fls_lib.c -o fls_lib.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ifind_lib.lo -MD -MP -MF .deps/ifind_lib.Tpo -c ifind_lib.c -o ifind_lib.o
+mv -f .deps/dstat_lib.Tpo .deps/dstat_lib.Plo
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT ils_lib.lo -MD -MP -MF .deps/ils_lib.Tpo -c ils_lib.c -o ils_lib.o
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT usnjls_lib.lo -MD -MP -MF .deps/usnjls_lib.Tpo -c -o usnjls_lib.lo usnjls_lib.c
+mv -f .deps/ffind_lib.Tpo .deps/ffind_lib.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT walk_cpp.lo -MD -MP -MF .deps/walk_cpp.Tpo -c -o walk_cpp.lo walk_cpp.cpp
+mv -f .deps/icat_lib.Tpo .deps/icat_lib.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT yaffs.lo -MD -MP -MF .deps/yaffs.Tpo -c -o yaffs.lo yaffs.cpp
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT usn_journal.lo -MD -MP -MF .deps/usn_journal.Tpo -c usn_journal.c -o usn_journal.o
+mv -f .deps/fls_lib.Tpo .deps/fls_lib.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT logical_fs.lo -MD -MP -MF .deps/logical_fs.Tpo -c -o logical_fs.lo logical_fs.cpp
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT usnjls_lib.lo -MD -MP -MF .deps/usnjls_lib.Tpo -c usnjls_lib.c -o usnjls_lib.o
+mv -f .deps/ils_lib.Tpo .deps/ils_lib.Plo
+mv -f .deps/ifind_lib.Tpo .deps/ifind_lib.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT apfs.lo -MD -MP -MF .deps/apfs.Tpo -c -o apfs.lo apfs.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT apfs_compat.lo -MD -MP -MF .deps/apfs_compat.Tpo -c -o apfs_compat.lo apfs_compat.cpp
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT walk_cpp.lo -MD -MP -MF .deps/walk_cpp.Tpo -c walk_cpp.cpp -o walk_cpp.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT yaffs.lo -MD -MP -MF .deps/yaffs.Tpo -c yaffs.cpp -o yaffs.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT logical_fs.lo -MD -MP -MF .deps/logical_fs.Tpo -c logical_fs.cpp -o logical_fs.o
+mv -f .deps/usn_journal.Tpo .deps/usn_journal.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT apfs_fs.lo -MD -MP -MF .deps/apfs_fs.Tpo -c -o apfs_fs.lo apfs_fs.cpp
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT apfs_compat.lo -MD -MP -MF .deps/apfs_compat.Tpo -c apfs_compat.cpp -o apfs_compat.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT apfs.lo -MD -MP -MF .deps/apfs.Tpo -c apfs.cpp -o apfs.o
+mv -f .deps/usnjls_lib.Tpo .deps/usnjls_lib.Plo
+mv -f .deps/ntfs.Tpo .deps/ntfs.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT apfs_open.lo -MD -MP -MF .deps/apfs_open.Tpo -c -o apfs_open.lo apfs_open.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT encryptionHelper.lo -MD -MP -MF .deps/encryptionHelper.Tpo -c -o encryptionHelper.lo encryptionHelper.cpp
+mv -f .deps/ntfs_dent.Tpo .deps/ntfs_dent.Plo
+mv -f .deps/walk_cpp.Tpo .deps/walk_cpp.Plo
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT apfs_fs.lo -MD -MP -MF .deps/apfs_fs.Tpo -c apfs_fs.cpp -o apfs_fs.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT apfs_open.lo -MD -MP -MF .deps/apfs_open.Tpo -c apfs_open.cpp -o apfs_open.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT encryptionHelper.lo -MD -MP -MF .deps/encryptionHelper.Tpo -c encryptionHelper.cpp -o encryptionHelper.o
+mv -f .deps/hfs.Tpo .deps/hfs.Plo
+mv -f .deps/encryptionHelper.Tpo .deps/encryptionHelper.Plo
+mv -f .deps/logical_fs.Tpo .deps/logical_fs.Plo
+mv -f .deps/apfs_open.Tpo .deps/apfs_open.Plo
+mv -f .deps/yaffs.Tpo .deps/yaffs.Plo
+mv -f .deps/apfs_fs.Tpo .deps/apfs_fs.Plo
+mv -f .deps/apfs_compat.Tpo .deps/apfs_compat.Plo
+mv -f .deps/apfs.Tpo .deps/apfs.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o libtskfs.la  fs_inode.lo fs_io.lo fs_block.lo fs_open.lo fs_name.lo fs_dir.lo fs_types.lo fs_attr.lo fs_attrlist.lo fs_load.lo fs_parse.lo fs_file.lo unix_misc.lo nofs_misc.lo ffs.lo ffs_dent.lo ext2fs.lo ext2fs_dent.lo ext2fs_journal.lo fatfs.lo fatfs_meta.lo fatfs_dent.lo fatxxfs.lo fatxxfs_meta.lo fatxxfs_dent.lo exfatfs.lo exfatfs_meta.lo exfatfs_dent.lo fatfs_utils.lo ntfs.lo ntfs_dent.lo swapfs.lo rawfs.lo iso9660.lo iso9660_dent.lo hfs.lo hfs_dent.lo hfs_journal.lo hfs_unicompare.lo decmpfs.lo lzvn.lo dcalc_lib.lo dcat_lib.lo dls_lib.lo dstat_lib.lo ffind_lib.lo fls_lib.lo icat_lib.lo ifind_lib.lo ils_lib.lo usn_journal.lo usnjls_lib.lo walk_cpp.lo yaffs.lo logical_fs.lo apfs.lo apfs_compat.lo apfs_fs.lo apfs_open.lo encryptionHelper.lo  -lz -lsqlite3 -ldl -lstdc++
+libtool: link: ar cr .libs/libtskfs.a  fs_inode.o fs_io.o fs_block.o fs_open.o fs_name.o fs_dir.o fs_types.o fs_attr.o fs_attrlist.o fs_load.o fs_parse.o fs_file.o unix_misc.o nofs_misc.o ffs.o ffs_dent.o ext2fs.o ext2fs_dent.o ext2fs_journal.o fatfs.o fatfs_meta.o fatfs_dent.o fatxxfs.o fatxxfs_meta.o fatxxfs_dent.o exfatfs.o exfatfs_meta.o exfatfs_dent.o fatfs_utils.o ntfs.o ntfs_dent.o swapfs.o rawfs.o iso9660.o iso9660_dent.o hfs.o hfs_dent.o hfs_journal.o hfs_unicompare.o decmpfs.o lzvn.o dcalc_lib.o dcat_lib.o dls_lib.o dstat_lib.o ffind_lib.o fls_lib.o icat_lib.o ifind_lib.o ils_lib.o usn_journal.o usnjls_lib.o walk_cpp.o yaffs.o logical_fs.o apfs.o apfs_compat.o apfs_fs.o apfs_open.o encryptionHelper.o
+libtool: link: ranlib .libs/libtskfs.a
+libtool: link: ( cd ".libs" && rm -f "libtskfs.la" && ln -s "../libtskfs.la" "libtskfs.la" )
+Making all in hashdb
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT encase.lo -MD -MP -MF .deps/encase.Tpo -c -o encase.lo encase.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hashkeeper.lo -MD -MP -MF .deps/hashkeeper.Tpo -c -o hashkeeper.lo hashkeeper.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT idxonly.lo -MD -MP -MF .deps/idxonly.Tpo -c -o idxonly.lo idxonly.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT md5sum.lo -MD -MP -MF .deps/md5sum.Tpo -c -o md5sum.lo md5sum.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT nsrl.lo -MD -MP -MF .deps/nsrl.Tpo -c -o nsrl.lo nsrl.c
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT sqlite_hdb.lo -MD -MP -MF .deps/sqlite_hdb.Tpo -c -o sqlite_hdb.lo sqlite_hdb.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT binsrch_index.lo -MD -MP -MF .deps/binsrch_index.Tpo -c -o binsrch_index.lo binsrch_index.cpp
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_hashdb.lo -MD -MP -MF .deps/tsk_hashdb.Tpo -c -o tsk_hashdb.lo tsk_hashdb.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hdb_base.lo -MD -MP -MF .deps/hdb_base.Tpo -c -o hdb_base.lo hdb_base.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT idxonly.lo -MD -MP -MF .deps/idxonly.Tpo -c idxonly.c -o idxonly.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT md5sum.lo -MD -MP -MF .deps/md5sum.Tpo -c md5sum.c -o md5sum.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT nsrl.lo -MD -MP -MF .deps/nsrl.Tpo -c nsrl.c -o nsrl.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hashkeeper.lo -MD -MP -MF .deps/hashkeeper.Tpo -c hashkeeper.c -o hashkeeper.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT encase.lo -MD -MP -MF .deps/encase.Tpo -c encase.c -o encase.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hdb_base.lo -MD -MP -MF .deps/hdb_base.Tpo -c hdb_base.c -o hdb_base.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT tsk_hashdb.lo -MD -MP -MF .deps/tsk_hashdb.Tpo -c tsk_hashdb.c -o tsk_hashdb.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT binsrch_index.lo -MD -MP -MF .deps/binsrch_index.Tpo -c binsrch_index.cpp -o binsrch_index.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT sqlite_hdb.lo -MD -MP -MF .deps/sqlite_hdb.Tpo -c sqlite_hdb.cpp -o sqlite_hdb.o
+mv -f .deps/idxonly.Tpo .deps/idxonly.Plo
+mv -f .deps/md5sum.Tpo .deps/md5sum.Plo
+mv -f .deps/hashkeeper.Tpo .deps/hashkeeper.Plo
+mv -f .deps/hdb_base.Tpo .deps/hdb_base.Plo
+mv -f .deps/encase.Tpo .deps/encase.Plo
+mv -f .deps/tsk_hashdb.Tpo .deps/tsk_hashdb.Plo
+mv -f .deps/nsrl.Tpo .deps/nsrl.Plo
+mv -f .deps/binsrch_index.Tpo .deps/binsrch_index.Plo
+mv -f .deps/sqlite_hdb.Tpo .deps/sqlite_hdb.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o libtskhashdb.la  encase.lo hashkeeper.lo idxonly.lo md5sum.lo nsrl.lo sqlite_hdb.lo binsrch_index.lo tsk_hashdb.lo hdb_base.lo  -lz -lsqlite3 -ldl -lstdc++
+libtool: link: ar cr .libs/libtskhashdb.a  encase.o hashkeeper.o idxonly.o md5sum.o nsrl.o sqlite_hdb.o binsrch_index.o tsk_hashdb.o hdb_base.o
+libtool: link: ranlib .libs/libtskhashdb.a
+libtool: link: ( cd ".libs" && rm -f "libtskhashdb.la" && ln -s "../libtskhashdb.la" "libtskhashdb.la" )
+Making all in auto
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT auto.lo -MD -MP -MF .deps/auto.Tpo -c -o auto.lo auto.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT auto_db.lo -MD -MP -MF .deps/auto_db.Tpo -c -o auto_db.lo auto_db.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT db_sqlite.lo -MD -MP -MF .deps/db_sqlite.Tpo -c -o db_sqlite.lo db_sqlite.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT case_db.lo -MD -MP -MF .deps/case_db.Tpo -c -o case_db.lo case_db.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT guid.lo -MD -MP -MF .deps/guid.Tpo -c -o guid.lo guid.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT tsk_db.lo -MD -MP -MF .deps/tsk_db.Tpo -c -o tsk_db.lo tsk_db.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT is_image_supported.lo -MD -MP -MF .deps/is_image_supported.Tpo -c -o is_image_supported.lo is_image_supported.cpp
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT is_image_supported.lo -MD -MP -MF .deps/is_image_supported.Tpo -c is_image_supported.cpp -o is_image_supported.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT case_db.lo -MD -MP -MF .deps/case_db.Tpo -c case_db.cpp -o case_db.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT tsk_db.lo -MD -MP -MF .deps/tsk_db.Tpo -c tsk_db.cpp -o tsk_db.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT db_sqlite.lo -MD -MP -MF .deps/db_sqlite.Tpo -c db_sqlite.cpp -o db_sqlite.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT auto.lo -MD -MP -MF .deps/auto.Tpo -c auto.cpp -o auto.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT auto_db.lo -MD -MP -MF .deps/auto_db.Tpo -c auto_db.cpp -o auto_db.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64 -MT guid.lo -MD -MP -MF .deps/guid.Tpo -c guid.cpp -o guid.o
+mv -f .deps/case_db.Tpo .deps/case_db.Plo
+mv -f .deps/tsk_db.Tpo .deps/tsk_db.Plo
+mv -f .deps/guid.Tpo .deps/guid.Plo
+mv -f .deps/is_image_supported.Tpo .deps/is_image_supported.Plo
+mv -f .deps/auto.Tpo .deps/auto.Plo
+mv -f .deps/auto_db.Tpo .deps/auto_db.Plo
+mv -f .deps/db_sqlite.Tpo .deps/db_sqlite.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wmultichar -Wsign-promo -Wno-overloaded-virtual -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o libtskauto.la  auto.lo auto_db.lo db_sqlite.lo case_db.lo guid.lo tsk_db.lo is_image_supported.lo   -lz -lsqlite3 -ldl -lstdc++
+libtool: link: ar cr .libs/libtskauto.a  auto.o auto_db.o db_sqlite.o case_db.o guid.o tsk_db.o is_image_supported.o
+libtool: link: ranlib .libs/libtskauto.a
+libtool: link: ( cd ".libs" && rm -f "libtskauto.la" && ln -s "../libtskauto.la" "libtskauto.la" )
+Making all in pool
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT pool_open.lo -MD -MP -MF .deps/pool_open.Tpo -c -o pool_open.lo pool_open.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT pool_read.lo -MD -MP -MF .deps/pool_read.Tpo -c -o pool_read.lo pool_read.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT pool_types.lo -MD -MP -MF .deps/pool_types.Tpo -c -o pool_types.lo pool_types.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT apfs_pool_compat.lo -MD -MP -MF .deps/apfs_pool_compat.Tpo -c -o apfs_pool_compat.lo apfs_pool_compat.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT apfs_pool.lo -MD -MP -MF .deps/apfs_pool.Tpo -c -o apfs_pool.lo apfs_pool.cpp
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT img_bfio_handle.lo -MD -MP -MF .deps/img_bfio_handle.Tpo -c -o img_bfio_handle.lo img_bfio_handle.c
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT lvm_pool_compat.lo -MD -MP -MF .deps/lvm_pool_compat.Tpo -c -o lvm_pool_compat.lo lvm_pool_compat.cpp
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT lvm_pool.lo -MD -MP -MF .deps/lvm_pool.Tpo -c -o lvm_pool.lo lvm_pool.cpp
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT img_bfio_handle.lo -MD -MP -MF .deps/img_bfio_handle.Tpo -c img_bfio_handle.c -o img_bfio_handle.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT pool_open.lo -MD -MP -MF .deps/pool_open.Tpo -c pool_open.cpp -o pool_open.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT apfs_pool_compat.lo -MD -MP -MF .deps/apfs_pool_compat.Tpo -c apfs_pool_compat.cpp -o apfs_pool_compat.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT apfs_pool.lo -MD -MP -MF .deps/apfs_pool.Tpo -c apfs_pool.cpp -o apfs_pool.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT pool_types.lo -MD -MP -MF .deps/pool_types.Tpo -c pool_types.cpp -o pool_types.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT lvm_pool_compat.lo -MD -MP -MF .deps/lvm_pool_compat.Tpo -c lvm_pool_compat.cpp -o lvm_pool_compat.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT pool_read.lo -MD -MP -MF .deps/pool_read.Tpo -c pool_read.cpp -o pool_read.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT lvm_pool.lo -MD -MP -MF .deps/lvm_pool.Tpo -c lvm_pool.cpp -o lvm_pool.o
+mv -f .deps/img_bfio_handle.Tpo .deps/img_bfio_handle.Plo
+mv -f .deps/lvm_pool_compat.Tpo .deps/lvm_pool_compat.Plo
+mv -f .deps/lvm_pool.Tpo .deps/lvm_pool.Plo
+mv -f .deps/pool_types.Tpo .deps/pool_types.Plo
+mv -f .deps/pool_read.Tpo .deps/pool_read.Plo
+mv -f .deps/pool_open.Tpo .deps/pool_open.Plo
+mv -f .deps/apfs_pool.Tpo .deps/apfs_pool.Plo
+mv -f .deps/apfs_pool_compat.Tpo .deps/apfs_pool_compat.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Werror -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o libtskpool.la  pool_open.lo pool_read.lo pool_types.lo apfs_pool_compat.lo apfs_pool.lo img_bfio_handle.lo lvm_pool_compat.lo lvm_pool.lo  -lz -lsqlite3 -ldl -lstdc++
+libtool: link: ar cr .libs/libtskpool.a  pool_open.o pool_read.o pool_types.o apfs_pool_compat.o apfs_pool.o img_bfio_handle.o lvm_pool_compat.o lvm_pool.o
+libtool: link: ranlib .libs/libtskpool.a
+libtool: link: ( cd ".libs" && rm -f "libtskpool.la" && ln -s "../libtskpool.la" "libtskpool.la" )
+Making all in util
+/bin/sh ../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT crypto.lo -MD -MP -MF .deps/crypto.Tpo -c -o crypto.lo crypto.cpp
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT detect_encryption.lo -MD -MP -MF .deps/detect_encryption.Tpo -c -o detect_encryption.lo detect_encryption.c
+/bin/sh ../../libtool  --tag=CC   --mode=compile gcc -DHAVE_CONFIG_H -I. -I../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT file_system_utils.lo -MD -MP -MF .deps/file_system_utils.Tpo -c -o file_system_utils.lo file_system_utils.c
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT file_system_utils.lo -MD -MP -MF .deps/file_system_utils.Tpo -c file_system_utils.c -o file_system_utils.o
+libtool: compile:  gcc -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT detect_encryption.lo -MD -MP -MF .deps/detect_encryption.Tpo -c detect_encryption.c -o detect_encryption.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT crypto.lo -MD -MP -MF .deps/crypto.Tpo -c crypto.cpp -o crypto.o
+mv -f .deps/file_system_utils.Tpo .deps/file_system_utils.Plo
+mv -f .deps/crypto.Tpo .deps/crypto.Plo
+mv -f .deps/detect_encryption.Tpo .deps/detect_encryption.Plo
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Werror -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o libtskutil.la  crypto.lo detect_encryption.lo file_system_utils.lo  -lz -lsqlite3 -ldl -lstdc++
+libtool: link: ar cr .libs/libtskutil.a  crypto.o detect_encryption.o file_system_utils.o
+libtool: link: ranlib .libs/libtskutil.a
+libtool: link: ( cd ".libs" && rm -f "libtskutil.la" && ln -s "../libtskutil.la" "libtskutil.la" )
+Making all in util/Bitlocker
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT BitlockerParser.lo -MD -MP -MF .deps/BitlockerParser.Tpo -c -o BitlockerParser.lo BitlockerParser.cpp
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT DataTypes.lo -MD -MP -MF .deps/DataTypes.Tpo -c -o DataTypes.lo DataTypes.cpp
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT BitlockerUtils.lo -MD -MP -MF .deps/BitlockerUtils.Tpo -c -o BitlockerUtils.lo BitlockerUtils.cpp
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueUnicode.lo -MD -MP -MF .deps/MetadataValueUnicode.Tpo -c -o MetadataValueUnicode.lo MetadataValueUnicode.cpp
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataEntry.lo -MD -MP -MF .deps/MetadataEntry.Tpo -c -o MetadataEntry.lo MetadataEntry.cpp
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataUtils.lo -MD -MP -MF .deps/MetadataUtils.Tpo -c -o MetadataUtils.lo MetadataUtils.cpp
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueAesCcmEncryptedKey.lo -MD -MP -MF .deps/MetadataValueAesCcmEncryptedKey.Tpo -c -o MetadataValueAesCcmEncryptedKey.lo MetadataValueAesCcmEncryptedKey.cpp
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueKey.lo -MD -MP -MF .deps/MetadataValueKey.Tpo -c -o MetadataValueKey.lo MetadataValueKey.cpp
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueOffsetAndSize.lo -MD -MP -MF .deps/MetadataValueOffsetAndSize.Tpo -c -o MetadataValueOffsetAndSize.lo MetadataValueOffsetAndSize.cpp
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueStretchKey.lo -MD -MP -MF .deps/MetadataValueStretchKey.Tpo -c -o MetadataValueStretchKey.lo MetadataValueStretchKey.cpp
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueOffsetAndSize.lo -MD -MP -MF .deps/MetadataValueOffsetAndSize.Tpo -c MetadataValueOffsetAndSize.cpp -o MetadataValueOffsetAndSize.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT BitlockerUtils.lo -MD -MP -MF .deps/BitlockerUtils.Tpo -c BitlockerUtils.cpp -o BitlockerUtils.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT BitlockerParser.lo -MD -MP -MF .deps/BitlockerParser.Tpo -c BitlockerParser.cpp -o BitlockerParser.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT DataTypes.lo -MD -MP -MF .deps/DataTypes.Tpo -c DataTypes.cpp -o DataTypes.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueAesCcmEncryptedKey.lo -MD -MP -MF .deps/MetadataValueAesCcmEncryptedKey.Tpo -c MetadataValueAesCcmEncryptedKey.cpp -o MetadataValueAesCcmEncryptedKey.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueUnicode.lo -MD -MP -MF .deps/MetadataValueUnicode.Tpo -c MetadataValueUnicode.cpp -o MetadataValueUnicode.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueKey.lo -MD -MP -MF .deps/MetadataValueKey.Tpo -c MetadataValueKey.cpp -o MetadataValueKey.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueStretchKey.lo -MD -MP -MF .deps/MetadataValueStretchKey.Tpo -c MetadataValueStretchKey.cpp -o MetadataValueStretchKey.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataEntry.lo -MD -MP -MF .deps/MetadataEntry.Tpo -c MetadataEntry.cpp -o MetadataEntry.o
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataUtils.lo -MD -MP -MF .deps/MetadataUtils.Tpo -c MetadataUtils.cpp -o MetadataUtils.o
+mv -f .deps/MetadataValueOffsetAndSize.Tpo .deps/MetadataValueOffsetAndSize.Plo
+/bin/sh ../../../libtool  --tag=CXX   --mode=compile g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueVolumeMasterKey.lo -MD -MP -MF .deps/MetadataValueVolumeMasterKey.Tpo -c -o MetadataValueVolumeMasterKey.lo MetadataValueVolumeMasterKey.cpp
+mv -f .deps/BitlockerUtils.Tpo .deps/BitlockerUtils.Plo
+mv -f .deps/BitlockerParser.Tpo .deps/BitlockerParser.Plo
+mv -f .deps/DataTypes.Tpo .deps/DataTypes.Plo
+mv -f .deps/MetadataValueUnicode.Tpo .deps/MetadataValueUnicode.Plo
+mv -f .deps/MetadataValueAesCcmEncryptedKey.Tpo .deps/MetadataValueAesCcmEncryptedKey.Plo
+mv -f .deps/MetadataValueKey.Tpo .deps/MetadataValueKey.Plo
+mv -f .deps/MetadataEntry.Tpo .deps/MetadataEntry.Plo
+mv -f .deps/MetadataValueStretchKey.Tpo .deps/MetadataValueStretchKey.Plo
+mv -f .deps/MetadataUtils.Tpo .deps/MetadataUtils.Plo
+libtool: compile:  g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Werror -O2 -arch arm64 -MT MetadataValueVolumeMasterKey.lo -MD -MP -MF .deps/MetadataValueVolumeMasterKey.Tpo -c MetadataValueVolumeMasterKey.cpp -o MetadataValueVolumeMasterKey.o
+mv -f .deps/MetadataValueVolumeMasterKey.Tpo .deps/MetadataValueVolumeMasterKey.Plo
+/bin/sh ../../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Werror -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o libtskbitlocker.la  BitlockerParser.lo DataTypes.lo BitlockerUtils.lo MetadataValueUnicode.lo MetadataEntry.lo MetadataUtils.lo MetadataValueAesCcmEncryptedKey.lo MetadataValueKey.lo MetadataValueOffsetAndSize.lo MetadataValueStretchKey.lo MetadataValueVolumeMasterKey.lo  -lz -lsqlite3 -ldl -lstdc++
+libtool: link: ar cr .libs/libtskbitlocker.a  BitlockerParser.o DataTypes.o BitlockerUtils.o MetadataValueUnicode.o MetadataEntry.o MetadataUtils.o MetadataValueAesCcmEncryptedKey.o MetadataValueKey.o MetadataValueOffsetAndSize.o MetadataValueStretchKey.o MetadataValueVolumeMasterKey.o
+libtool: link: ranlib .libs/libtskbitlocker.a
+libtool: link: ( cd ".libs" && rm -f "libtskbitlocker.la" && ln -s "../libtskbitlocker.la" "libtskbitlocker.la" )
+/bin/sh ../libtool  --tag=CC   --mode=link gcc -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -version-info 23:1:0  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o libtsk.la -rpath /usr/local/lib  base/libtskbase.la img/libtskimg.la vs/libtskvs.la fs/libtskfs.la hashdb/libtskhashdb.la auto/libtskauto.la pool/libtskpool.la util/libtskutil.la  util/Bitlocker/libtskbitlocker.la -lz -lsqlite3 -ldl -lstdc++
+sed -e 's![@]prefix[@]!/usr/local!g' \
+      -e 's![@]exec_prefix[@]!/usr/local!g' \
+      -e 's![@]includedir[@]!/usr/local/include!g' \
+      -e 's![@]libdir[@]!/usr/local/lib!g' \
+      -e 's![@]PACKAGE_NAME[@]!sleuthkit!g' \
+      -e 's![@]PACKAGE_VERSION[@]!4.15.0!g' \
+      -e 's![@]AX_PACKAGE_REQUIRES[@]!!g' \
+      -e 's![@]PACKAGE_LIBS_PRIVATE[@]!-lsqlite3 -lz!g' \
+      -e 's![@]AX_PACKAGE_REQUIRES_PRIVATE[@]!!g' \
+      tsk.pc.in >tsk.pc
+libtool: link: (cd .libs/libtsk.lax/libtskbase.a && ar x "/Users/atlhnv/RecoveryApp/work/TASK-016/sleuthkit-build/source/tsk/base/.libs/libtskbase.a")
+libtool: link: (cd .libs/libtsk.lax/libtskimg.a && ar x "/Users/atlhnv/RecoveryApp/work/TASK-016/sleuthkit-build/source/tsk/img/.libs/libtskimg.a")
+libtool: link: (cd .libs/libtsk.lax/libtskvs.a && ar x "/Users/atlhnv/RecoveryApp/work/TASK-016/sleuthkit-build/source/tsk/vs/.libs/libtskvs.a")
+libtool: link: (cd .libs/libtsk.lax/libtskfs.a && ar x "/Users/atlhnv/RecoveryApp/work/TASK-016/sleuthkit-build/source/tsk/fs/.libs/libtskfs.a")
+libtool: link: (cd .libs/libtsk.lax/libtskhashdb.a && ar x "/Users/atlhnv/RecoveryApp/work/TASK-016/sleuthkit-build/source/tsk/hashdb/.libs/libtskhashdb.a")
+libtool: link: (cd .libs/libtsk.lax/libtskauto.a && ar x "/Users/atlhnv/RecoveryApp/work/TASK-016/sleuthkit-build/source/tsk/auto/.libs/libtskauto.a")
+libtool: link: (cd .libs/libtsk.lax/libtskpool.a && ar x "/Users/atlhnv/RecoveryApp/work/TASK-016/sleuthkit-build/source/tsk/pool/.libs/libtskpool.a")
+libtool: link: (cd .libs/libtsk.lax/libtskutil.a && ar x "/Users/atlhnv/RecoveryApp/work/TASK-016/sleuthkit-build/source/tsk/util/.libs/libtskutil.a")
+libtool: link: (cd .libs/libtsk.lax/libtskbitlocker.a && ar x "/Users/atlhnv/RecoveryApp/work/TASK-016/sleuthkit-build/source/tsk/util/Bitlocker/.libs/libtskbitlocker.a")
+libtool: link: ar cr .libs/libtsk.a   .libs/libtsk.lax/libtskbase.a/XGetopt.o .libs/libtsk.lax/libtskbase.a/crc.o .libs/libtsk.lax/libtskbase.a/md5c.o .libs/libtsk.lax/libtskbase.a/mymalloc.o .libs/libtsk.lax/libtskbase.a/sha1c.o .libs/libtsk.lax/libtskbase.a/tsk_endian.o .libs/libtsk.lax/libtskbase.a/tsk_error.o .libs/libtsk.lax/libtskbase.a/tsk_error_win32.o .libs/libtsk.lax/libtskbase.a/tsk_list.o .libs/libtsk.lax/libtskbase.a/tsk_lock.o .libs/libtsk.lax/libtskbase.a/tsk_parse.o .libs/libtsk.lax/libtskbase.a/tsk_printf.o .libs/libtsk.lax/libtskbase.a/tsk_stack.o .libs/libtsk.lax/libtskbase.a/tsk_unicode.o .libs/libtsk.lax/libtskbase.a/tsk_version.o  .libs/libtsk.lax/libtskimg.a/aff.o .libs/libtsk.lax/libtskimg.a/ewf.o .libs/libtsk.lax/libtskimg.a/img_io.o .libs/libtsk.lax/libtskimg.a/img_open.o .libs/libtsk.lax/libtskimg.a/img_types.o .libs/libtsk.lax/libtskimg.a/img_writer.o .libs/libtsk.lax/libtskimg.a/logical_img.o .libs/libtsk.lax/libtskimg.a/mult_files.o .libs/libtsk.lax/libtskimg.a/raw.o .libs/libtsk.lax/libtskimg.a/unsupported_types.o .libs/libtsk.lax/libtskimg.a/vhd.o .libs/libtsk.lax/libtskimg.a/vmdk.o  .libs/libtsk.lax/libtskvs.a/bsd.o .libs/libtsk.lax/libtskvs.a/dos.o .libs/libtsk.lax/libtskvs.a/gpt.o .libs/libtsk.lax/libtskvs.a/mac.o .libs/libtsk.lax/libtskvs.a/mm_io.o .libs/libtsk.lax/libtskvs.a/mm_open.o .libs/libtsk.lax/libtskvs.a/mm_part.o .libs/libtsk.lax/libtskvs.a/mm_types.o .libs/libtsk.lax/libtskvs.a/sun.o  .libs/libtsk.lax/libtskfs.a/apfs.o .libs/libtsk.lax/libtskfs.a/apfs_compat.o .libs/libtsk.lax/libtskfs.a/apfs_fs.o .libs/libtsk.lax/libtskfs.a/apfs_open.o .libs/libtsk.lax/libtskfs.a/dcalc_lib.o .libs/libtsk.lax/libtskfs.a/dcat_lib.o .libs/libtsk.lax/libtskfs.a/decmpfs.o .libs/libtsk.lax/libtskfs.a/dls_lib.o .libs/libtsk.lax/libtskfs.a/dstat_lib.o .libs/libtsk.lax/libtskfs.a/encryptionHelper.o .libs/libtsk.lax/libtskfs.a/exfatfs.o .libs/libtsk.lax/libtskfs.a/exfatfs_dent.o .libs/libtsk.lax/libtskfs.a/exfatfs_meta.o .libs/libtsk.lax/libtskfs.a/ext2fs.o .libs/libtsk.lax/libtskfs.a/ext2fs_dent.o .libs/libtsk.lax/libtskfs.a/ext2fs_journal.o .libs/libtsk.lax/libtskfs.a/fatfs.o .libs/libtsk.lax/libtskfs.a/fatfs_dent.o .libs/libtsk.lax/libtskfs.a/fatfs_meta.o .libs/libtsk.lax/libtskfs.a/fatfs_utils.o .libs/libtsk.lax/libtskfs.a/fatxxfs.o .libs/libtsk.lax/libtskfs.a/fatxxfs_dent.o .libs/libtsk.lax/libtskfs.a/fatxxfs_meta.o .libs/libtsk.lax/libtskfs.a/ffind_lib.o .libs/libtsk.lax/libtskfs.a/ffs.o .libs/libtsk.lax/libtskfs.a/ffs_dent.o .libs/libtsk.lax/libtskfs.a/fls_lib.o .libs/libtsk.lax/libtskfs.a/fs_attr.o .libs/libtsk.lax/libtskfs.a/fs_attrlist.o .libs/libtsk.lax/libtskfs.a/fs_block.o .libs/libtsk.lax/libtskfs.a/fs_dir.o .libs/libtsk.lax/libtskfs.a/fs_file.o .libs/libtsk.lax/libtskfs.a/fs_inode.o .libs/libtsk.lax/libtskfs.a/fs_io.o .libs/libtsk.lax/libtskfs.a/fs_load.o .libs/libtsk.lax/libtskfs.a/fs_name.o .libs/libtsk.lax/libtskfs.a/fs_open.o .libs/libtsk.lax/libtskfs.a/fs_parse.o .libs/libtsk.lax/libtskfs.a/fs_types.o .libs/libtsk.lax/libtskfs.a/hfs.o .libs/libtsk.lax/libtskfs.a/hfs_dent.o .libs/libtsk.lax/libtskfs.a/hfs_journal.o .libs/libtsk.lax/libtskfs.a/hfs_unicompare.o .libs/libtsk.lax/libtskfs.a/icat_lib.o .libs/libtsk.lax/libtskfs.a/ifind_lib.o .libs/libtsk.lax/libtskfs.a/ils_lib.o .libs/libtsk.lax/libtskfs.a/iso9660.o .libs/libtsk.lax/libtskfs.a/iso9660_dent.o .libs/libtsk.lax/libtskfs.a/logical_fs.o .libs/libtsk.lax/libtskfs.a/lzvn.o .libs/libtsk.lax/libtskfs.a/nofs_misc.o .libs/libtsk.lax/libtskfs.a/ntfs.o .libs/libtsk.lax/libtskfs.a/ntfs_dent.o .libs/libtsk.lax/libtskfs.a/rawfs.o .libs/libtsk.lax/libtskfs.a/swapfs.o .libs/libtsk.lax/libtskfs.a/unix_misc.o .libs/libtsk.lax/libtskfs.a/usn_journal.o .libs/libtsk.lax/libtskfs.a/usnjls_lib.o .libs/libtsk.lax/libtskfs.a/walk_cpp.o .libs/libtsk.lax/libtskfs.a/yaffs.o  .libs/libtsk.lax/libtskhashdb.a/binsrch_index.o .libs/libtsk.lax/libtskhashdb.a/encase.o .libs/libtsk.lax/libtskhashdb.a/hashkeeper.o .libs/libtsk.lax/libtskhashdb.a/hdb_base.o .libs/libtsk.lax/libtskhashdb.a/idxonly.o .libs/libtsk.lax/libtskhashdb.a/md5sum.o .libs/libtsk.lax/libtskhashdb.a/nsrl.o .libs/libtsk.lax/libtskhashdb.a/sqlite_hdb.o .libs/libtsk.lax/libtskhashdb.a/tsk_hashdb.o  .libs/libtsk.lax/libtskauto.a/auto.o .libs/libtsk.lax/libtskauto.a/auto_db.o .libs/libtsk.lax/libtskauto.a/case_db.o .libs/libtsk.lax/libtskauto.a/db_sqlite.o .libs/libtsk.lax/libtskauto.a/guid.o .libs/libtsk.lax/libtskauto.a/is_image_supported.o .libs/libtsk.lax/libtskauto.a/tsk_db.o  .libs/libtsk.lax/libtskpool.a/apfs_pool.o .libs/libtsk.lax/libtskpool.a/apfs_pool_compat.o .libs/libtsk.lax/libtskpool.a/img_bfio_handle.o .libs/libtsk.lax/libtskpool.a/lvm_pool.o .libs/libtsk.lax/libtskpool.a/lvm_pool_compat.o .libs/libtsk.lax/libtskpool.a/pool_open.o .libs/libtsk.lax/libtskpool.a/pool_read.o .libs/libtsk.lax/libtskpool.a/pool_types.o  .libs/libtsk.lax/libtskutil.a/crypto.o .libs/libtsk.lax/libtskutil.a/detect_encryption.o .libs/libtsk.lax/libtskutil.a/file_system_utils.o  .libs/libtsk.lax/libtskbitlocker.a/BitlockerParser.o .libs/libtsk.lax/libtskbitlocker.a/BitlockerUtils.o .libs/libtsk.lax/libtskbitlocker.a/DataTypes.o .libs/libtsk.lax/libtskbitlocker.a/MetadataEntry.o .libs/libtsk.lax/libtskbitlocker.a/MetadataUtils.o .libs/libtsk.lax/libtskbitlocker.a/MetadataValueAesCcmEncryptedKey.o .libs/libtsk.lax/libtskbitlocker.a/MetadataValueKey.o .libs/libtsk.lax/libtskbitlocker.a/MetadataValueOffsetAndSize.o .libs/libtsk.lax/libtskbitlocker.a/MetadataValueStretchKey.o .libs/libtsk.lax/libtskbitlocker.a/MetadataValueUnicode.o .libs/libtsk.lax/libtskbitlocker.a/MetadataValueVolumeMasterKey.o
+libtool: link: ranlib .libs/libtsk.a
+libtool: link: rm -fr .libs/libtsk.lax
+libtool: link: ( cd ".libs" && rm -f "libtsk.la" && ln -s "../libtsk.la" "libtsk.la" )
+Making all in tools
+Making all in imgtools
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT img_cat.o -MD -MP -MF .deps/img_cat.Tpo -c -o img_cat.o img_cat.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT img_stat.o -MD -MP -MF .deps/img_stat.Tpo -c -o img_stat.o img_stat.cpp
+mv -f .deps/img_stat.Tpo .deps/img_stat.Po
+mv -f .deps/img_cat.Tpo .deps/img_cat.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o img_stat img_stat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o img_cat img_cat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o img_stat img_stat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o img_cat img_cat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+Making all in vstools
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT mmls.o -MD -MP -MF .deps/mmls.Tpo -c -o mmls.o mmls.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT mmstat.o -MD -MP -MF .deps/mmstat.Tpo -c -o mmstat.o mmstat.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT mmcat.o -MD -MP -MF .deps/mmcat.Tpo -c -o mmcat.o mmcat.cpp
+mv -f .deps/mmstat.Tpo .deps/mmstat.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o mmstat mmstat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/mmcat.Tpo .deps/mmcat.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o mmcat mmcat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/mmls.Tpo .deps/mmls.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o mmls mmls.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o mmstat mmstat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o mmcat mmcat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o mmls mmls.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: ignoring duplicate libraries: '-lc++'
+Making all in fstools
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT blkcalc.o -MD -MP -MF .deps/blkcalc.Tpo -c -o blkcalc.o blkcalc.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT blkcat.o -MD -MP -MF .deps/blkcat.Tpo -c -o blkcat.o blkcat.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT blkls.o -MD -MP -MF .deps/blkls.Tpo -c -o blkls.o blkls.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT blkstat.o -MD -MP -MF .deps/blkstat.Tpo -c -o blkstat.o blkstat.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT ffind.o -MD -MP -MF .deps/ffind.Tpo -c -o ffind.o ffind.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT fls.o -MD -MP -MF .deps/fls.Tpo -c -o fls.o fls.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT fcat.o -MD -MP -MF .deps/fcat.Tpo -c -o fcat.o fcat.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT fsstat.o -MD -MP -MF .deps/fsstat.Tpo -c -o fsstat.o fsstat.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT icat.o -MD -MP -MF .deps/icat.Tpo -c -o icat.o icat.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT ifind.o -MD -MP -MF .deps/ifind.Tpo -c -o ifind.o ifind.cpp
+mv -f .deps/blkcat.Tpo .deps/blkcat.Po
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT ils.o -MD -MP -MF .deps/ils.Tpo -c -o ils.o ils.cpp
+mv -f .deps/ffind.Tpo .deps/ffind.Po
+mv -f .deps/fls.Tpo .deps/fls.Po
+mv -f .deps/ifind.Tpo .deps/ifind.Po
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT istat.o -MD -MP -MF .deps/istat.Tpo -c -o istat.o istat.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT jcat.o -MD -MP -MF .deps/jcat.Tpo -c -o jcat.o jcat.cpp
+mv -f .deps/blkls.Tpo .deps/blkls.Po
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT jls.o -MD -MP -MF .deps/jls.Tpo -c -o jls.o jls.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT usnjls.o -MD -MP -MF .deps/usnjls.Tpo -c -o usnjls.o usnjls.cpp
+mv -f .deps/fcat.Tpo .deps/fcat.Po
+mv -f .deps/blkcalc.Tpo .deps/blkcalc.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o blkcat blkcat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/fsstat.Tpo .deps/fsstat.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o blkls blkls.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/blkstat.Tpo .deps/blkstat.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o ffind ffind.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o fls fls.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/icat.Tpo .deps/icat.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o fcat fcat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/usnjls.Tpo .deps/usnjls.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o fsstat fsstat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o blkls blkls.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o blkcat blkcat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o ffind ffind.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o fls fls.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o fcat fcat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o icat icat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o ifind ifind.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o usnjls usnjls.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o fsstat fsstat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o blkcalc blkcalc.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o blkstat blkstat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+mv -f .deps/jls.Tpo .deps/jls.Po
+mv -f .deps/jcat.Tpo .deps/jcat.Po
+mv -f .deps/istat.Tpo .deps/istat.Po
+mv -f .deps/ils.Tpo .deps/ils.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o jcat jcat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o jls jls.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o ils ils.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o istat istat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o icat icat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o ifind ifind.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o usnjls usnjls.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o blkcalc blkcalc.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o blkstat blkstat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o jcat jcat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o jls jls.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o istat istat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o ils ils.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+Making all in hashtools
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT hfind.o -MD -MP -MF .deps/hfind.Tpo -c -o hfind.o hfind.cpp
+mv -f .deps/hfind.Tpo .deps/hfind.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o hfind hfind.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o hfind hfind.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+Making all in srchtools
+gcc -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT srch_strings.o -MD -MP -MF .deps/srch_strings.Tpo -c -o srch_strings.o srch_strings.c
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT sigfind.o -MD -MP -MF .deps/sigfind.Tpo -c -o sigfind.o sigfind.cpp
+mv -f .deps/srch_strings.Tpo .deps/srch_strings.Po
+/bin/sh ../../libtool  --tag=CC   --mode=link gcc -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o srch_strings srch_strings.o  -lz -lsqlite3 -ldl -lstdc++
+libtool: link: gcc -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o srch_strings srch_strings.o  -L/opt/homebrew/lib -L/usr/local/lib -lz -lsqlite3 -ldl -lstdc++ -pthread
+mv -f .deps/sigfind.Tpo .deps/sigfind.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -static -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o sigfind sigfind.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o sigfind sigfind.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+Making all in sorter
+Making all in timeline
+Making all in autotools
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../..  -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64 -MT tsk_recover.o -MD -MP -MF .deps/tsk_recover.Tpo -c -o tsk_recover.o tsk_recover.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../..  -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64 -MT tsk_loaddb.o -MD -MP -MF .deps/tsk_loaddb.Tpo -c -o tsk_loaddb.o tsk_loaddb.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../..  -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64 -MT tsk_comparedir.o -MD -MP -MF .deps/tsk_comparedir.Tpo -c -o tsk_comparedir.o tsk_comparedir.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../..  -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64 -MT tsk_gettimes.o -MD -MP -MF .deps/tsk_gettimes.Tpo -c -o tsk_gettimes.o tsk_gettimes.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../..  -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64 -MT tsk_imageinfo.o -MD -MP -MF .deps/tsk_imageinfo.Tpo -c -o tsk_imageinfo.o tsk_imageinfo.cpp
+mv -f .deps/tsk_imageinfo.Tpo .deps/tsk_imageinfo.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o tsk_imageinfo tsk_imageinfo.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/tsk_recover.Tpo .deps/tsk_recover.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o tsk_recover tsk_recover.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/tsk_gettimes.Tpo .deps/tsk_gettimes.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o tsk_gettimes tsk_gettimes.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/tsk_loaddb.Tpo .deps/tsk_loaddb.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o tsk_loaddb tsk_loaddb.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/tsk_comparedir.Tpo .deps/tsk_comparedir.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o tsk_comparedir tsk_comparedir.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o tsk_imageinfo tsk_imageinfo.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o tsk_recover tsk_recover.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o tsk_gettimes tsk_gettimes.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o tsk_loaddb tsk_loaddb.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-overloaded-virtual -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o tsk_comparedir tsk_comparedir.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+Making all in fiwalk
+Making all in src
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT fiwalk.o -MD -MP -MF .deps/fiwalk.Tpo -c -o fiwalk.o fiwalk.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT fiwalk_tsk.o -MD -MP -MF .deps/fiwalk_tsk.Tpo -c -o fiwalk_tsk.o fiwalk_tsk.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT content.o -MD -MP -MF .deps/content.Tpo -c -o content.o content.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT arff.o -MD -MP -MF .deps/arff.Tpo -c -o arff.o arff.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT plugin.o -MD -MP -MF .deps/plugin.Tpo -c -o plugin.o plugin.cpp
+gcc -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT utils.o -MD -MP -MF .deps/utils.Tpo -c -o utils.o utils.c
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT dfxml.o -MD -MP -MF .deps/dfxml.Tpo -c -o dfxml.o dfxml.cpp
+gcc -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT hexbuf.o -MD -MP -MF .deps/hexbuf.Tpo -c -o hexbuf.o hexbuf.c
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT unicode_escape.o -MD -MP -MF .deps/unicode_escape.Tpo -c -o unicode_escape.o unicode_escape.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT base64.o -MD -MP -MF .deps/base64.Tpo -c -o base64.o base64.cpp
+mv -f .deps/hexbuf.Tpo .deps/hexbuf.Po
+gcc -DHAVE_CONFIG_H -I. -I../../../tsk  -I../../.. -I../../.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT sha2.o -MD -MP -MF .deps/sha2.Tpo -c -o sha2.o sha2.c
+mv -f .deps/utils.Tpo .deps/utils.Po
+mv -f .deps/sha2.Tpo .deps/sha2.Po
+mv -f .deps/base64.Tpo .deps/base64.Po
+mv -f .deps/unicode_escape.Tpo .deps/unicode_escape.Po
+mv -f .deps/plugin.Tpo .deps/plugin.Po
+mv -f .deps/content.Tpo .deps/content.Po
+mv -f .deps/fiwalk_tsk.Tpo .deps/fiwalk_tsk.Po
+mv -f .deps/dfxml.Tpo .deps/dfxml.Po
+mv -f .deps/fiwalk.Tpo .deps/fiwalk.Po
+mv -f .deps/arff.Tpo .deps/arff.Po
+/bin/sh ../../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o fiwalk fiwalk.o fiwalk_tsk.o content.o arff.o plugin.o utils.o dfxml.o hexbuf.o unicode_escape.o base64.o sha2.o ../../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o fiwalk fiwalk.o fiwalk_tsk.o content.o arff.o plugin.o utils.o dfxml.o hexbuf.o unicode_escape.o base64.o sha2.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+Making all in plugins
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../../tsk   -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT jpeg_extract.o -MD -MP -MF .deps/jpeg_extract.Tpo -c -o jpeg_extract.o jpeg_extract.cpp
+mv -f .deps/jpeg_extract.Tpo .deps/jpeg_extract.Po
+/bin/sh ../../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o jpeg_extract jpeg_extract.o  -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o jpeg_extract jpeg_extract.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+make[3]: Nothing to be done for `all-am'.
+Making all in pooltools
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../../tsk  -I../.. -I./../.. -Wall -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -MT pstat.o -MD -MP -MF .deps/pstat.Tpo -c -o pstat.o pstat.cpp
+mv -f .deps/pstat.Tpo .deps/pstat.Po
+/bin/sh ../../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64  -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -static -o pstat pstat.o ../../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o pstat pstat.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
+ld: warning: ignoring duplicate libraries: '-lc++'
+make[2]: Nothing to be done for `all-am'.
+Making all in tests
+make[1]: Nothing to be done for `all'.
+Making all in samples
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../tsk  -I.. -I./.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT posix-style.o -MD -MP -MF .deps/posix-style.Tpo -c -o posix-style.o posix-style.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../tsk  -I.. -I./.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT callback-style.o -MD -MP -MF .deps/callback-style.Tpo -c -o callback-style.o callback-style.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../tsk  -I.. -I./.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT posix-cpp-style.o -MD -MP -MF .deps/posix-cpp-style.Tpo -c -o posix-cpp-style.o posix-cpp-style.cpp
+g++ -std=c++14 -DHAVE_CONFIG_H -I. -I../tsk  -I.. -I./.. -I/opt/homebrew/include -D_THREAD_SAFE -pthread -I/usr/local/include -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -MT callback-cpp-style.o -MD -MP -MF .deps/callback-cpp-style.Tpo -c -o callback-cpp-style.o callback-cpp-style.cpp
+mv -f .deps/callback-cpp-style.Tpo .deps/callback-cpp-style.Po
+mv -f .deps/posix-cpp-style.Tpo .deps/posix-cpp-style.Po
+mv -f .deps/callback-style.Tpo .deps/callback-style.Po
+/bin/sh ../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -static -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o callback_cpp_style callback-cpp-style.o ../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+mv -f .deps/posix-style.Tpo .deps/posix-style.Po
+/bin/sh ../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -static -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o callback_style callback-style.o ../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+/bin/sh ../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -static -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o posix_cpp_style posix-cpp-style.o ../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
 libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o callback_cpp_style callback-cpp-style.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o callback_style callback-style.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
 libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o posix_cpp_style posix-cpp-style.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
 ld: warning: -bind_at_load is deprecated on macOS
 ld: warning: -bind_at_load is deprecated on macOS
-ld: warning: ignoring duplicate libraries: '-lc++'
-ld: warning: ignoring duplicate libraries: '-lc++'
-ld: warning: -bind_at_load is deprecated on macOS
 ld: warning: -bind_at_load is deprecated on macOS
 ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: ignoring duplicate libraries: '-lc++'
+/bin/sh ../libtool  --tag=CXX   --mode=link g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -static -arch arm64 -L/opt/homebrew/lib -D_THREAD_SAFE -pthread -L/usr/local/lib -o posix_style posix-style.o ../tsk/libtsk.la -lz -lsqlite3 -ldl -lstdc++
+libtool: link: g++ -std=c++14 -Wall -Wextra -Wno-unused-parameter -Wno-unused-command-line-argument -O2 -arch arm64 -arch arm64 -D_THREAD_SAFE -o posix_style posix-style.o -Wl,-bind_at_load  -L/opt/homebrew/lib -L/usr/local/lib ../tsk/.libs/libtsk.a -lz -lsqlite3 -ldl -lstdc++ -pthread
+ld: warning: -bind_at_load is deprecated on macOS
 ld: warning: ignoring duplicate libraries: '-lc++'
 Making all in man
 make[1]: Nothing to be done for `all'.

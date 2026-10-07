@@ -1,4 +1,4 @@
-date: 2026-10-06T21:13:24Z
+date: 2026-10-07T15:19:51Z
 MACOSX_DEPLOYMENT_TARGET=14.0
 sdk_path: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
 sdk_version: 27.0
@@ -11,5 +11,5 @@ build_command: make untrunc-81 IS_RELEASE=1 NJOBS=<cpu>
 build-only patch: Packaging/untrunc-local-archive-build.patch (сеть запрещена, VER=archive-9d86ec9)
 untrunc_archive_sha256=a46bbb0013b274cd239b0fe037cdf175e6865d62119e78f6f8d8684efbeaa8dc
 ffmpeg_archive_sha256=b072aed6871998cce9b36e7774033105ca29e33632be5b6347f3206898e0756a
-build_only_patch_sha256=fc4a2b22c91c2da065ba5f6d12e2822a8f976aa52b4c1cece292a6427f4e4c68
+build_only_patch_sha256=e4691e33dc01c76d594988b6ffb237b715478db94c05687f1a7bbd36793eb9f5
 deploy_target=14.0 sdk=27.0

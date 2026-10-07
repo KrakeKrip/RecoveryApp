@@ -1,4 +1,4 @@
-date: 2026-10-06T20:34:59Z
+date: 2026-10-07T15:19:32Z
 MACOSX_DEPLOYMENT_TARGET=14.0
 sdk_path: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
 sdk_version: 27.0
@@ -10,5 +10,5 @@ cmake: cmake version 4.4.3
 make: GNU Make 3.81
 testdisk_sha256=f8343be20cb4001c5d91a2e3bcd918398f00ae6d8310894a5a9f2feb813c283f
 libjpeg_sha256=6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e
-patch_sha256=23f884cec48f10d43ed0d2c8ec011f29243819a5fa6294ab0da87e78e842d72b
+patch_sha256=47e3d5bc4c0dec549a0bb1723ac075d5c6dd02dbb3e1f5e9bf0bed245ae981d5
 deploy_target=14.0 sdk=27.0
