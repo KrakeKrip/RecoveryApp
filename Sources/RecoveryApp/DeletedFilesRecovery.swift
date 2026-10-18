@@ -201,6 +201,8 @@ final class DeletedFilesExecutor: @unchecked Sendable {
     private let lock = NSLock()
     private let physicalSessions: PhysicalQuickSessionCoordinator
     private var imageRecovery: ImageQuickRecovery?
+    private var imageScanRecovery: ImageQuickRecovery?
+    private var physicalSavingRecovery: PhysicalQuickRecovery?
     private var deepRecovery: PhotoRecDeepRecovery?
 
     init(physicalSessions: PhysicalQuickSessionCoordinator = PhysicalQuickSessionCoordinator()) {
@@ -209,25 +211,28 @@ final class DeletedFilesExecutor: @unchecked Sendable {
 
     func scan(
         imageURL: URL,
+        onCandidates: @escaping QuickCandidatesHandler = { _ in },
         onOutput: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> [DeletedFileCandidate] {
         let recovery = try Self.makeImageRecovery()
-        replaceImageRecovery(recovery)
-        return try await recovery.scan(imageURL: imageURL, onOutput: onOutput)
+        replaceImageScanRecovery(recovery)
+        return try await recovery.scan(imageURL: imageURL, onCandidates: onCandidates, onOutput: onOutput)
     }
 
     func scan(
         drive: ExternalDrive,
+        onCandidates: @escaping QuickCandidatesHandler = { _ in },
         onOutput: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> [DeletedFileCandidate] {
         let recovery = try physicalSessions.recovery(for: drive)
-        return try await recovery.scan(drive: drive, onOutput: onOutput)
+        return try await recovery.scan(drive: drive, onCandidates: onCandidates, onOutput: onOutput)
     }
 
     func recoverDetailed(
         imageURL: URL,
         outputFolderURL: URL,
         candidates: [DeletedFileCandidate],
+        onRecovered: @escaping QuickRecoveredHandler = { _, _ in },
         onOutput: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> [RecoveredFileResult] {
         let recovery = try Self.makeImageRecovery()
@@ -236,6 +241,7 @@ final class DeletedFilesExecutor: @unchecked Sendable {
             imageURL: imageURL,
             outputFolderURL: outputFolderURL,
             candidates: candidates,
+            onRecovered: onRecovered,
             onOutput: onOutput
         )
     }
@@ -248,14 +254,17 @@ final class DeletedFilesExecutor: @unchecked Sendable {
         drive: ExternalDrive,
         outputFolderURL: URL,
         candidates: [DeletedFileCandidate],
+        onRecovered: @escaping QuickRecoveredHandler = { _, _ in },
         onOutput: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> [RecoveredFileResult] {
         guard !candidates.isEmpty else { throw DeletedFilesError.nothingSelected }
-        let recovery = try physicalSessions.recovery(for: drive)
+        let recovery = try physicalSessions.recovery(for: drive).makeRecoveryWorker()
+        setPhysicalSavingRecovery(recovery)
         return try await recovery.recoverDetailed(
             drive: drive,
             outputFolderURL: outputFolderURL,
             candidates: candidates,
+            onRecovered: onRecovered,
             onOutput: onOutput
         )
     }
@@ -329,14 +338,30 @@ final class DeletedFilesExecutor: @unchecked Sendable {
     func cancel() {
         lock.lock()
         let activeDeepRecovery = deepRecovery
-        let activeImageRecovery = imageRecovery
         lock.unlock()
         activeDeepRecovery?.cancel()
-        activeImageRecovery?.cancel()
+        cancelScan()
+        cancelQuickRecovery()
         // Отмена физической quick-операции останавливает группу процессов
         // активной сессии и сбрасывает её саму.
-        physicalSessions.cancelActive()
         physicalSessions.reset()
+    }
+
+    func cancelScan() {
+        lock.lock()
+        let scan = imageScanRecovery
+        lock.unlock()
+        scan?.cancel()
+        physicalSessions.cancelActive()
+    }
+
+    func cancelQuickRecovery() {
+        lock.lock()
+        let image = imageRecovery
+        let physical = physicalSavingRecovery
+        lock.unlock()
+        image?.cancel()
+        physical?.cancel()
     }
 
     // MARK: - Инструменты
@@ -389,6 +414,18 @@ final class DeletedFilesExecutor: @unchecked Sendable {
     private func replaceImageRecovery(_ recovery: ImageQuickRecovery) {
         lock.lock()
         imageRecovery = recovery
+        lock.unlock()
+    }
+
+    private func replaceImageScanRecovery(_ recovery: ImageQuickRecovery) {
+        lock.lock()
+        imageScanRecovery = recovery
+        lock.unlock()
+    }
+
+    private func setPhysicalSavingRecovery(_ recovery: PhysicalQuickRecovery) {
+        lock.lock()
+        physicalSavingRecovery = recovery
         lock.unlock()
     }
 

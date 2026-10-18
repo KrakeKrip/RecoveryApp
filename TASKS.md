@@ -2,10 +2,10 @@
 
 ## Внеочередное исправление 2026-10-18
 
-`FIX-SONOMA-NAVIGATION` — REVIEW: явный путь переходов главного экрана,
+`FIX-SONOMA-NAVIGATION` — DONE: явный путь переходов главного экрана,
 кликабельная площадь карточек. Локально 321 domain checks, CLI, свежая .app,
-подпись и GUI переходы/Back/повторные входы — PASS; macOS 14.5 ожидает
-подтверждения друга. Владелец разрешил main и Latest до этой приёмки.
+подпись и GUI переходы/Back/повторные входы — PASS; пользователь подтвердил
+работу переходов на MacBook Pro M2 / macOS 14.5. Это не тест восстановления.
 Задание: [tasks/FIX-SONOMA-NAVIGATION.md](tasks/FIX-SONOMA-NAVIGATION.md).
 Отчёт: [reports/FIX-SONOMA-NAVIGATION.md](reports/FIX-SONOMA-NAVIGATION.md).
 
@@ -13,6 +13,7 @@
 
 | Задача | Статус | Ветка | Назначение |
 |---|---|---|---|
+| TASK-017 | DONE | `codex/task-017-live-quick-recovery` | Потоковые находки quick, независимое сохранение во время поиска и отмена; 373 checks + CLI/helper/FD/synthetic GUI; физическая одновременная приёмка и 14.5 для нового режима пока не проверены |
 | TASK-001 | DONE | `glm/task-001-cli-foundation` | Общий RecoveryCore и минимальный CLI |
 | TASK-002 | DONE | `glm/task-002-sleuthkit-fd` | Пересборка Sleuth Kit и регрессия унаследованного read-only FD |
 | TASK-003 | DONE | `glm/task-003-quick-image-cli` | RecoveryCore и CLI быстрого восстановления из образа |

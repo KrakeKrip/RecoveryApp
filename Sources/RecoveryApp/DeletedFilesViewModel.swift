@@ -26,6 +26,13 @@ final class DeletedFilesViewModel: ObservableObject {
     @Published var candidates: [DeletedFileCandidate] = []
     @Published var selection: Set<DeletedFileCandidate.ID> = []
     @Published var state: State = .ready
+    @Published private(set) var isQuickScanRunning = false
+    @Published private(set) var isQuickRecoveryRunning = false
+    @Published private(set) var quickSavedResults: [DeletedFileCandidate.ID: RecoveredFileResult] = [:]
+    @Published private(set) var savingIDs: Set<DeletedFileCandidate.ID> = []
+    @Published private(set) var quickResultFolder: URL?
+    @Published private(set) var quickRecoveryFailure: UserFacingFailure?
+    @Published private(set) var quickScanNotice: String?
     // Фильтры находок: категория, поиск по имени и размерные пороги.
     // Ошибка валидации порогов хранится отдельно — ошибочный запрос не
     // применяется, восстановление блокируется до исправления или сброса.
@@ -60,6 +67,8 @@ final class DeletedFilesViewModel: ObservableObject {
     private let driveSnapshot: @Sendable () async throws -> [ExternalDrive]
 
     private var task: Task<Void, Never>?
+    private var recoveryTask: Task<Void, Never>?
+    private var scanGeneration = UUID()
     private var timer: Timer?
     private var processActivity: NSObjectProtocol?
     private var progressTask: Task<Void, Never>?
@@ -116,7 +125,31 @@ final class DeletedFilesViewModel: ObservableObject {
     }
 
     var isBusy: Bool {
-        state == .scanning || state == .recovering || state == .deepRecovering
+        isQuickScanRunning || isQuickRecoveryRunning
+            || state == .scanning || state == .recovering || state == .deepRecovering
+    }
+
+    var quickSavedSummary: QuickRecoverySummary? {
+        guard let folder = quickResultFolder, !quickSavedResults.isEmpty else { return nil }
+        return QuickRecoverySummary.make(folder: folder, results: Array(quickSavedResults.values))
+    }
+
+    var showsQuickSavedSummary: Bool {
+        if case .succeeded = state { return false }
+        return quickSavedSummary != nil
+    }
+
+    var canEditFindings: Bool { state != .deepRecovering }
+
+    func savingStatus(for candidate: DeletedFileCandidate) -> String {
+        if savingIDs.contains(candidate.id) { return "Сохраняется…" }
+        guard let result = quickSavedResults[candidate.id] else { return "Не сохранён" }
+        switch result.status {
+        case .sizeMatches, .expectedEmpty: return "Сохранён"
+        case .incomplete: return "Сохранён не полностью"
+        case .sizeMismatch: return "Сохранён · размер отличается"
+        case .sizeUnknown: return "Сохранён · размер неизвестен"
+        }
     }
 
     var canScan: Bool {
@@ -165,7 +198,8 @@ final class DeletedFilesViewModel: ObservableObject {
 
     var canRecover: Bool {
         (selectedDrive != nil || imageURL != nil) && outputFolderURL != nil
-            && !visibleSelectedCandidates.isEmpty && !isBusy && !sizeFilterBlocksRecovery
+            && !visibleSelectedCandidates.isEmpty && !isQuickRecoveryRunning
+            && (!isBusy || isQuickScanRunning) && !sizeFilterBlocksRecovery
     }
 
     /// Отфильтрованные находки: исходный массив не меняется, порядок
@@ -249,7 +283,15 @@ final class DeletedFilesViewModel: ObservableObject {
 
     /// «Выбрать все»: только видимые записи.
     func selectAllVisible() {
-        selection = Set(visibleCandidates.map(\.id))
+        selection = selectableCandidateIDs
+    }
+
+    var selectableCandidateIDs: Set<DeletedFileCandidate.ID> {
+        Set(visibleCandidates.map(\.id)).subtracting(quickSavedResults.keys).subtracting(savingIDs)
+    }
+
+    func setSelection(_ ids: Set<DeletedFileCandidate.ID>) {
+        selection = ids.intersection(selectableCandidateIDs)
     }
 
     /// Полный сброс фильтров (при смене источника или новом скане).
@@ -263,6 +305,7 @@ final class DeletedFilesViewModel: ObservableObject {
     }
 
     func selectImage(_ url: URL) {
+        guard !isBusy else { return }
         let supportedExtensions = Set(["img", "raw", "dd", "dmg"])
         guard supportedExtensions.contains(url.pathExtension.lowercased()) else {
             state = .failed(UserFacingFailure(
@@ -275,6 +318,7 @@ final class DeletedFilesViewModel: ObservableObject {
         imageURL = url
         candidates = []
         selection = []
+        resetQuickResults()
         resetFiltersState()
         state = .ready
         log = ""
@@ -282,6 +326,7 @@ final class DeletedFilesViewModel: ObservableObject {
     }
 
     func selectDrive(id: ExternalDrive.ID?) {
+        guard !isBusy else { return }
         if id != selectedDriveID {
             executor.resetPhysicalSession()
         }
@@ -299,6 +344,7 @@ final class DeletedFilesViewModel: ObservableObject {
     }
 
     func selectOutputFolder(_ url: URL) {
+        guard !isBusy else { return }
         if let drive = selectedDrive, drive.contains(url) {
             outputFolderURL = nil
             state = .failed(UserFacingFailure(
@@ -307,6 +353,7 @@ final class DeletedFilesViewModel: ObservableObject {
             ))
             return
         }
+        if outputFolderURL != url { resetQuickResults() }
         outputFolderURL = url
         if case .failed = state { state = .ready }
     }
@@ -355,16 +402,31 @@ final class DeletedFilesViewModel: ObservableObject {
     }
 
     func scan() {
+        guard canScan else { return }
         let drive = selectedDrive
         let imageURL = imageURL
         guard drive != nil || imageURL != nil else { return }
         state = .scanning
         candidates = []
         selection = []
+        resetQuickResults()
+        executor.resetPhysicalSession()
+        isQuickScanRunning = true
+        scanGeneration = UUID()
+        let generation = scanGeneration
+        let publish: QuickCandidatesHandler = { [weak self] batch in
+            guard let self, self.scanGeneration == generation else { return }
+            self.appendQuickCandidates(batch)
+        }
         resetFiltersState()
         log = drive.map { "Накопитель будет открыт только для чтения: \($0.rawDevicePath)\n" }
             ?? "Образ открыт только для чтения: \(imageURL!.path)\n"
         startTimer()
+        activityTitle = "Подготавливаем поиск…"
+        activityDetail = "Для чтения накопителя macOS может запросить подтверждение."
+        processedBytes = nil
+        totalBytes = nil
+        readBytesPerSecond = nil
 
         task = Task { [weak self] in
             guard let self else { return }
@@ -375,25 +437,34 @@ final class DeletedFilesViewModel: ObservableObject {
                     // в PhysicalDriveSelector.selectDrive, без ручной копии.
                     let confirmed = try await confirmPhysicalSource(drive)
                     recordScannedSource(confirmed)
-                    found = try await executor.scan(drive: confirmed) { [weak self] text in
-                        self?.log.append(text)
+                    found = try await executor.scan(drive: confirmed, onCandidates: publish) { [weak self] text in
+                        guard self?.scanGeneration == generation else { return }
+                        self?.updateQuickScanStage(text)
                     }
                 } else if let imageURL {
-                    found = try await executor.scan(imageURL: imageURL) { [weak self] text in
-                        self?.log.append(text)
+                    found = try await executor.scan(imageURL: imageURL, onCandidates: publish) { [weak self] text in
+                        guard self?.scanGeneration == generation else { return }
+                        self?.updateQuickScanStage(text)
                     }
                 } else { return }
-                finishTimer()
-                candidates = found
-                selection = Set(found.map(\.id))
-                state = .scanFinished
+                guard scanGeneration == generation else { return }
+                appendQuickCandidates(found)
+                isQuickScanRunning = false
+                if isQuickRecoveryRunning {
+                    state = .recovering
+                    activityTitle = "Сохраняем выбранные файлы…"
+                    activityDetail = "Поиск завершён. Завершаем текущую группу сохранения."
+                } else {
+                    state = .scanFinished
+                }
+                finishQuickActivityIfIdle()
                 log.append("Найдено удалённых файлов: \(found.count).\n")
             } catch let error as DeletedFilesError {
-                handle(error)
+                guard scanGeneration == generation else { return }
+                finishQuickScan(error: error)
             } catch {
-                finishTimer()
-                state = .failed(UserFacingFailure.make(from: error))
-                log.append("\(error.localizedDescription)\n")
+                guard scanGeneration == generation else { return }
+                finishQuickScan(error: Task.isCancelled ? DeletedFilesError.cancelled : error)
             }
         }
     }
@@ -402,7 +473,10 @@ final class DeletedFilesViewModel: ObservableObject {
     /// восстановление.
     var visibleSelectedCandidates: [DeletedFileCandidate] {
         let visibleIDs = Set(visibleCandidates.map(\.id))
-        return candidates.filter { selection.contains($0.id) && visibleIDs.contains($0.id) }
+        return candidates.filter {
+            selection.contains($0.id) && visibleIDs.contains($0.id)
+                && quickSavedResults[$0.id] == nil && !savingIDs.contains($0.id)
+        }
     }
 
     func recoverSelected() {
@@ -417,18 +491,37 @@ final class DeletedFilesViewModel: ObservableObject {
             log.append("Размерные пороги содержат ошибку: исправьте или сбросьте фильтры. Восстановление заблокировано.\n")
             return
         }
-        guard !isBusy else { return }
+        guard !isQuickRecoveryRunning && (!isBusy || isQuickScanRunning) else { return }
         let chosen = visibleSelectedCandidates
         guard !chosen.isEmpty else {
             log.append("Нет видимых выбранных файлов для восстановления.\n")
             return
         }
-        state = .recovering
+        isQuickRecoveryRunning = true
+        savingIDs = Set(chosen.map(\.id))
+        quickRecoveryFailure = nil
+        quickResultFolder = outputFolderURL
+        if !isQuickScanRunning {
+            state = .recovering
+            activityTitle = "Сохраняем выбранные файлы…"
+            activityDetail = "Источник читается без изменений, результат записывается отдельно."
+            startTimer()
+        }
         log.append("Восстановление выбранных файлов: \(chosen.count).\n")
-        startTimer()
-
-        task = Task { [weak self] in
+        let published: QuickRecoveredHandler = { [weak self] candidate, result in
             guard let self else { return }
+            self.quickSavedResults[candidate.id] = result
+            self.savingIDs.remove(candidate.id)
+            self.selection.remove(candidate.id)
+        }
+
+        recoveryTask = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                isQuickRecoveryRunning = false
+                savingIDs = []
+                finishQuickActivityIfIdle()
+            }
             do {
                 let results: [RecoveredFileResult]
                 if let drive {
@@ -454,44 +547,42 @@ final class DeletedFilesViewModel: ObservableObject {
                     results = try await executor.recoverDetailed(
                         drive: confirmed,
                         outputFolderURL: outputFolderURL,
-                        candidates: chosen
+                        candidates: chosen,
+                        onRecovered: published
                     ) { [weak self] text in self?.log.append(text) }
                 } else if let imageURL {
                     results = try await executor.recoverDetailed(
                         imageURL: imageURL,
                         outputFolderURL: outputFolderURL,
-                        candidates: chosen
+                        candidates: chosen,
+                        onRecovered: published
                     ) { [weak self] text in self?.log.append(text) }
                 } else { return }
-                finishTimer()
                 if results.isEmpty {
                     // Пустой quick-результат — нормальное состояние без
                     // ложного успеха «сохранено 0».
-                    state = .scanFinished
+                    if !isQuickScanRunning { state = .scanFinished }
                     log.append("Удалённые файлы не найдены — восстанавливать нечего.\n")
                 } else {
-                    let summary = QuickRecoverySummary.make(folder: outputFolderURL, results: results)
-                    state = .succeeded(summary)
+                    let summary = QuickRecoverySummary.make(folder: outputFolderURL, results: Array(quickSavedResults.values))
+                    if !isQuickScanRunning { state = .succeeded(summary) }
                     log.append("Готово. Сохранено файлов: \(summary.savedCount).\n")
                     if summary.incompleteCount > 0 {
                         log.append("Внимание: \(summary.incompleteCount) файл(ов) извлечены не полностью.\n")
                     }
                 }
-                // Извлечение завершено — физическая quick-сессия своё отжила.
-                scannedSourceIdentity = nil
-                executor.resetPhysicalSession()
+                // Keep the source identity and session while more findings
+                // can arrive or be saved. Each save still revalidates the disk.
             } catch let error as DeletedFilesError {
-                handle(error)
+                finishQuickRecovery(error: error)
             } catch {
-                finishTimer()
-                state = .failed(UserFacingFailure.make(from: error))
-                log.append("\(error.localizedDescription)\n")
-                executor.resetPhysicalSession()
+                finishQuickRecovery(error: Task.isCancelled ? DeletedFilesError.cancelled : error)
             }
         }
     }
 
     func deepRecover() {
+        guard canDeepRecover else { return }
         guard let outputFolderURL else { return }
         let drive = selectedDrive
         let imageURL = imageURL
@@ -562,6 +653,99 @@ final class DeletedFilesViewModel: ObservableObject {
     func cancel() {
         executor.cancel()
         task?.cancel()
+        recoveryTask?.cancel()
+    }
+
+    func cancelQuickScan() {
+        executor.cancelScan()
+        task?.cancel()
+    }
+
+    func cancelQuickRecovery() {
+        executor.cancelQuickRecovery()
+        recoveryTask?.cancel()
+    }
+
+    private func appendQuickCandidates(_ batch: [DeletedFileCandidate]) {
+        var known = Set(candidates.map(\.id))
+        let fresh = batch.filter { known.insert($0.id).inserted }
+        candidates.append(contentsOf: fresh)
+        if isQuickScanRunning {
+            activityTitle = "Ищем удалённые файлы"
+            activityDetail = "Найдено: \(candidates.count). Можно выбирать и сохранять, не дожидаясь конца поиска."
+        }
+    }
+
+    private func updateQuickScanStage(_ text: String) {
+        log.append(text)
+        if text.hasPrefix("Источник:") || text.hasPrefix("Проверка файловой системы") {
+            activityTitle = "Проверяем файловую систему"
+            activityDetail = "Определяем способ чтения. Для физического диска macOS может запросить подтверждение."
+        } else if text.hasPrefix("Обнаружение разделов") {
+            activityTitle = "Проверяем разделы накопителя"
+            activityDetail = "Определяем, в каких разделах искать удалённые записи."
+        } else if text.hasPrefix("Проверка раздела") {
+            activityTitle = "Ищем удалённые файлы"
+            activityDetail = "Читаем записи файловой системы. Поиск потерянных записей на большом накопителе может быть длительным."
+        }
+    }
+
+    private func finishQuickScan(error: Error) {
+        isQuickScanRunning = false
+        if let error = error as? DeletedFilesError,
+           error == .sourceChanged || error == .sourceUnavailable {
+            scanGeneration = UUID()
+            cancelQuickRecovery()
+            candidates = []
+            selection = []
+            executor.resetPhysicalSession()
+            state = .failed(UserFacingFailure.make(from: error))
+        } else {
+            quickScanNotice = (error as? DeletedFilesError) == .cancelled
+                ? "Поиск остановлен. Уже найденные записи доступны для сохранения."
+                : "Поиск завершился с ошибкой. Список может быть неполным. \(UserFacingFailure.make(from: error).message)"
+            if isQuickRecoveryRunning {
+                state = .recovering
+                activityTitle = "Сохраняем выбранные файлы…"
+                activityDetail = "Поиск остановлен; завершённые сохранения останутся в папке результата."
+            } else if candidates.isEmpty && (error as? DeletedFilesError) != .cancelled {
+                state = .failed(UserFacingFailure.make(from: error))
+            } else {
+                state = .scanFinished
+            }
+        }
+        log.append("\(error.localizedDescription)\n")
+        finishQuickActivityIfIdle()
+    }
+
+    private func finishQuickRecovery(error: Error) {
+        log.append("\(error.localizedDescription)\n")
+        if let error = error as? DeletedFilesError,
+           error == .sourceChanged || error == .sourceUnavailable {
+            cancelQuickScan()
+            scanGeneration = UUID()
+            isQuickScanRunning = false
+            discardStaleFindings(reason: error)
+        } else {
+            if case .failed = state { return }
+            quickRecoveryFailure = (error as? DeletedFilesError) == .cancelled
+                ? UserFacingFailure(title: "Сохранение остановлено",
+                    message: "Недописанный файл текущей операции удалён. Поиск, если он ещё идёт, продолжается независимо.")
+                : UserFacingFailure.make(from: error)
+            if !isQuickScanRunning { state = .scanFinished }
+        }
+    }
+
+    private func finishQuickActivityIfIdle() {
+        if !isQuickScanRunning && !isQuickRecoveryRunning { finishTimer() }
+    }
+
+    private func resetQuickResults() {
+        quickSavedResults = [:]
+        savingIDs = []
+        quickResultFolder = nil
+        quickRecoveryFailure = nil
+        quickScanNotice = nil
     }
 
     /// Повторное обнаружение и сверка выбранного физического источника по
@@ -717,6 +901,7 @@ final class DeletedFilesViewModel: ObservableObject {
     private func resetResults() {
         candidates = []
         selection = []
+        resetQuickResults()
         scannedSourceIdentity = nil
         executor.resetPhysicalSession()
         state = .ready

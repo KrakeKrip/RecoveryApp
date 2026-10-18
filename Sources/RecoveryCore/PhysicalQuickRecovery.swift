@@ -100,31 +100,57 @@ public enum PhysicalDriveSelector {
 /// `/dev/fd/0` → `mmls`/`fls`/`icat`. Один экземпляр класса держит одну
 /// авторизационную сессию и переиспользует её внешнюю форму для всех вызовов
 /// helper: команда scan+recover создаёт ровно один системный запрос.
-public final class PhysicalQuickRecovery: @unchecked Sendable {
-    private struct ToolResult {
-        let status: Int32
-        let terminationReason: Process.TerminationReason
-        let output: String
+private final class QuickAuthorizationCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: (device: String, authorization: ReadOnlyAuthorization)?
+
+    func obtain(device: String) throws -> ReadOnlyAuthorization {
+        lock.lock()
+        defer { lock.unlock() }
+        if let value {
+            guard value.device == device else { throw DeletedFilesError.sourceChanged }
+            return value.authorization
+        }
+        let authorization = try ReadOnlyAuthorization(device: device)
+        value = (device, authorization)
+        return authorization
     }
+}
+
+public final class PhysicalQuickRecovery: @unchecked Sendable {
+    private typealias ToolResult = QuickToolProcess.Result
 
     private let helper: URL
     private let launcher: URL?
-    private let lock = NSLock()
-    private var process: Process?
-    private var authorization: ReadOnlyAuthorization?
+    private let processRunner = QuickToolProcess()
+    private let authorizations: QuickAuthorizationCache
 
     public init(helper: URL, launcher: URL?) {
         self.helper = helper
         self.launcher = launcher
+        authorizations = QuickAuthorizationCache()
+    }
+
+    private init(helper: URL, launcher: URL?, authorizations: QuickAuthorizationCache) {
+        self.helper = helper
+        self.launcher = launcher
+        self.authorizations = authorizations
+    }
+
+    /// Shares only authorization rights, NEVER a process or an open file
+    /// description. Each helper obtains its own checked O_RDONLY descriptor.
+    public func makeRecoveryWorker() -> PhysicalQuickRecovery {
+        PhysicalQuickRecovery(helper: helper, launcher: launcher, authorizations: authorizations)
     }
 
     public func scan(
         drive: ExternalDrive,
+        onCandidates: @escaping QuickCandidatesHandler = { _ in },
         onOutput: @escaping @MainActor @Sendable (String) -> Void = { _ in }
     ) async throws -> [DeletedFileCandidate] {
         try await withTaskCancellationHandler {
             try await Task.detached(priority: .userInitiated) { [self] in
-                try scanBlocking(drive: drive, onOutput: onOutput)
+                try scanBlocking(drive: drive, onCandidates: onCandidates, onOutput: onOutput)
             }.value
         } onCancel: { [self] in
             cancel()
@@ -151,6 +177,7 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
         drive: ExternalDrive,
         outputFolderURL: URL,
         candidates: [DeletedFileCandidate],
+        onRecovered: @escaping QuickRecoveredHandler = { _, _ in },
         onOutput: @escaping @MainActor @Sendable (String) -> Void = { _ in }
     ) async throws -> [RecoveredFileResult] {
         // Второй защитный барьер: те же проверки выхода непосредственно перед
@@ -164,6 +191,7 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
                     drive: drive,
                     outputFolderURL: outputFolderURL,
                     candidates: candidates,
+                    onRecovered: onRecovered,
                     onOutput: onOutput
                 )
             }.value
@@ -173,25 +201,14 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
     }
 
     public func cancel() {
-        lock.lock()
-        let runningProcess = process
-        lock.unlock()
-        guard let runningProcess, runningProcess.isRunning else { return }
-        let pid = runningProcess.processIdentifier
-        if kill(-pid, SIGTERM) != 0 { kill(pid, SIGTERM) }
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 1) {
-            if kill(-pid, 0) == 0 {
-                kill(-pid, SIGKILL)
-            } else if kill(pid, 0) == 0 {
-                kill(pid, SIGKILL)
-            }
-        }
+        processRunner.cancel()
     }
 
     // MARK: - Алгоритм
 
     private func scanBlocking(
         drive: ExternalDrive,
+        onCandidates: @escaping QuickCandidatesHandler,
         onOutput: @escaping @MainActor @Sendable (String) -> Void
     ) throws -> [DeletedFileCandidate] {
         try checkCancelled()
@@ -201,7 +218,8 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
         if let direct = try scanFileSystem(
             device: drive.rawDevicePath,
             commonArguments: common,
-            offset: 0
+            offset: 0,
+            onCandidates: onCandidates
         ) {
             return direct
         }
@@ -228,7 +246,8 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
             if let result = try scanFileSystem(
                 device: drive.rawDevicePath,
                 commonArguments: common,
-                offset: offset
+                offset: offset,
+                onCandidates: onCandidates
             ) {
                 recognizedFileSystem = true
                 found.append(contentsOf: result)
@@ -241,20 +260,24 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
     private func scanFileSystem(
         device: String,
         commonArguments: [String],
-        offset: Int64
+        offset: Int64,
+        onCandidates: @escaping QuickCandidatesHandler
     ) throws -> [DeletedFileCandidate]? {
         for filesystemType in ["fat32", "exfat"] {
+            var stream = QuickCandidateStream(partitionOffset: offset, filesystemType: filesystemType)
             let result = try runTool(
                 helper,
                 arguments: ["fls"] + commonArguments + [String(offset), filesystemType],
-                standardInput: try obtainAuthorization(device: device).externalForm
+                standardInput: try obtainAuthorization(device: device).externalForm,
+                onStdout: { data in
+                    let batch = stream.consume(data)
+                    if !batch.isEmpty { QuickCallbacks.deliver { onCandidates(batch) } }
+                }
             )
             if result.status == 0 {
-                return SleuthKitOutputParser.deletedFiles(
-                    from: result.output,
-                    partitionOffset: offset,
-                    filesystemType: filesystemType
-                )
+                let batch = stream.consume(Data(), isFinal: true)
+                if !batch.isEmpty { QuickCallbacks.deliver { onCandidates(batch) } }
+                return stream.candidates
             }
             try mapHelperFailure(result)
         }
@@ -265,6 +288,7 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
         drive: ExternalDrive,
         outputFolderURL: URL,
         candidates: [DeletedFileCandidate],
+        onRecovered: @escaping QuickRecoveredHandler,
         onOutput: @escaping @MainActor @Sendable (String) -> Void
     ) throws -> [RecoveredFileResult] {
         var results: [RecoveredFileResult] = []
@@ -275,8 +299,7 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
                 folder: outputFolderURL
             )
             let partialURL = resultURL.appendingPathExtension("partial")
-            FileManager.default.createFile(atPath: partialURL.path, contents: nil)
-            let outputHandle = try FileHandle(forWritingTo: partialURL)
+            let outputHandle = try ImageQuickRecovery.createPartialFile(at: partialURL)
             defer { try? outputHandle.close() }
             emit("[\(index + 1)/\(candidates.count)] \(candidate.path)\n", onOutput)
             do {
@@ -304,12 +327,14 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
                     expectedSize: candidate.expectedSize,
                     actualSize: actualSize
                 )
-                results.append(RecoveredFileResult(
+                let recovered = RecoveredFileResult(
                     url: resultURL,
                     expectedSize: candidate.expectedSize,
                     actualSize: actualSize,
                     status: status
-                ))
+                )
+                results.append(recovered)
+                QuickCallbacks.deliver { onRecovered(candidate, recovered) }
             } catch {
                 try? FileManager.default.removeItem(at: partialURL)
                 throw error
@@ -338,19 +363,7 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
     /// экземпляре: scan и все icat одной команды разделяют один системный
     /// запрос. Повторное создание для того же диска не выполняется.
     private func obtainAuthorization(device: String) throws -> ReadOnlyAuthorization {
-        lock.lock()
-        let existing = authorization
-        lock.unlock()
-        if let existing { return existing }
-        let created = try ReadOnlyAuthorization(device: device)
-        lock.lock()
-        if let existing = authorization {
-            lock.unlock()
-            return existing
-        }
-        authorization = created
-        lock.unlock()
-        return created
+        try authorizations.obtain(device: device)
     }
 
     private func mapHelperFailure(
@@ -374,61 +387,17 @@ public final class PhysicalQuickRecovery: @unchecked Sendable {
         _ tool: URL,
         arguments: [String],
         standardOutput: FileHandle? = nil,
-        standardInput: Data? = nil
+        standardInput: Data? = nil,
+        onStdout: ((Data) -> Void)? = nil
     ) throws -> ToolResult {
-        let launchedProcess = Process()
-        let combinedPipe = Pipe()
-        let errorPipe = Pipe()
-        if let launcher {
-            launchedProcess.executableURL = launcher
-            launchedProcess.arguments = [tool.path] + arguments
-        } else {
-            launchedProcess.executableURL = tool
-            launchedProcess.arguments = arguments
-        }
-        if let standardOutput {
-            launchedProcess.standardOutput = standardOutput
-            launchedProcess.standardError = errorPipe
-        } else {
-            launchedProcess.standardOutput = combinedPipe
-            launchedProcess.standardError = combinedPipe
-        }
-        let inputPipe = standardInput == nil ? nil : Pipe()
-        launchedProcess.standardInput = inputPipe ?? FileHandle.nullDevice
-
-        lock.lock()
-        process = launchedProcess
-        lock.unlock()
-        defer {
-            lock.lock()
-            process = nil
-            lock.unlock()
-        }
-
-        do {
-            try launchedProcess.run()
-        } catch {
-            throw DeletedFilesError.launchFailed(error.localizedDescription)
-        }
-        if let standardInput, let inputPipe {
-            inputPipe.fileHandleForWriting.write(standardInput)
-            try? inputPipe.fileHandleForWriting.close()
-        }
-        // Drain the pipe while the child is still running. Waiting first can
-        // deadlock when fls produces more output than the pipe buffer holds.
-        let data = standardOutput == nil
-            ? combinedPipe.fileHandleForReading.readDataToEndOfFile()
-            : errorPipe.fileHandleForReading.readDataToEndOfFile()
-        launchedProcess.waitUntilExit()
-        return ToolResult(
-            status: launchedProcess.terminationStatus,
-            terminationReason: launchedProcess.terminationReason,
-            output: String(decoding: data, as: UTF8.self)
+        try processRunner.run(
+            tool, launcher: launcher, arguments: arguments,
+            standardOutput: standardOutput, standardInput: standardInput, onStdout: onStdout
         )
     }
 
     private func checkCancelled() throws {
-        if Task.isCancelled { throw DeletedFilesError.cancelled }
+        try processRunner.checkCancelled()
     }
 
     private func emit(

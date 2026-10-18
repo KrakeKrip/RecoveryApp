@@ -1884,4 +1884,320 @@ check(icatArgs == argsBeforeError, "icat не вызывался при ошиб
 unsetenv("RECOVERYAPP_ICAT_PATH")
 unsetenv("RECOVERYAPP_MMLS_PATH")
 
+// TASK-017: byte framing and actual processes held behind synthetic gates.
+let streamedRecord = "r/r * 6:\tРанний_файл.JPG\t0\t0\t0\t0\t10\t0\t0\n"
+var byteStream = QuickCandidateStream(partitionOffset: 2048, filesystemType: "exfat")
+var framed: [DeletedFileCandidate] = []
+for byte in streamedRecord.utf8 {
+    framed += byteStream.consume(Data([byte]))
+}
+check(framed.count == 1, "stream: строка собирается из отдельных байтов")
+check(framed.first?.displayName == "Ранний_файл.JPG", "stream: кириллица не повреждается границами чанков")
+check(framed.first?.partitionOffset == 2048 && framed.first?.filesystemType == "exfat",
+      "stream: находка сохраняет offset и тип ФС")
+check(framed.first?.expectedSize == 10, "stream: размер long-listing сохранён")
+check(byteStream.consume(Data(streamedRecord.utf8)).isEmpty, "stream: дубликат не публикуется")
+check(byteStream.consume(Data("d/d * 2:\tDIRECTORY\nnot a record\n".utf8)).isEmpty,
+      "stream: каталоги и диагностика не становятся файлами")
+var tailStream = QuickCandidateStream(partitionOffset: 0, filesystemType: "fat32")
+check(tailStream.consume(Data("r/r * 7:\tLAST.TXT".utf8)).isEmpty,
+      "stream: незавершённая строка не публикуется преждевременно")
+check(tailStream.consume(Data(), isFinal: true).count == 1, "stream: EOF завершает последнюю строку")
+
+let streamingRoot = root.appendingPathComponent("streaming", isDirectory: true)
+try FileManager.default.createDirectory(at: streamingRoot, withIntermediateDirectories: true)
+let streamFLS = streamingRoot.appendingPathComponent("fls")
+let streamICAT = streamingRoot.appendingPathComponent("icat")
+let compiler = Process()
+compiler.executableURL = URL(fileURLWithPath: "/usr/bin/clang")
+compiler.arguments = ["-Os", "Tests/Fixtures/streaming-quick-tools.c", "-o", streamFLS.path]
+try compiler.run()
+compiler.waitUntilExit()
+check(compiler.terminationStatus == 0, "stream: C stdio fixture собрана")
+try FileManager.default.copyItem(at: streamFLS, to: streamICAT)
+let streamingImage = streamingRoot.appendingPathComponent("synthetic.img")
+try Data("synthetic image fixture".utf8).write(to: streamingImage)
+let streamOut = streamingRoot.appendingPathComponent("out", isDirectory: true)
+try FileManager.default.createDirectory(at: streamOut, withIntermediateDirectories: true)
+let streamGate = streamingRoot.appendingPathComponent("fls-release")
+let saveGate = streamingRoot.appendingPathComponent("icat-release")
+let saveStarted = streamingRoot.appendingPathComponent("icat-started")
+let streamEnvironmentKeys = ["RECOVERYAPP_STREAM_GATE", "RECOVERYAPP_STREAM_ICAT_GATE",
+    "RECOVERYAPP_STREAM_ICAT_STARTED", "RECOVERYAPP_STREAM_STDERR_STRESS",
+    "RECOVERYAPP_STREAM_FAIL_SECOND", "RECOVERYAPP_STREAM_FLS_STARTED",
+    "RECOVERYAPP_FLS_PATH", "RECOVERYAPP_ICAT_PATH", "RECOVERYAPP_MMLS_PATH",
+    "RECOVERYAPP_TOOL_LAUNCHER_PATH"]
+let streamOldEnvironment = ProcessInfo.processInfo.environment
+setenv("RECOVERYAPP_STREAM_GATE", streamGate.path, 1)
+setenv("RECOVERYAPP_STREAM_STDERR_STRESS", "1", 1)
+let streamingTools = ImageQuickToolSet(mmls: streamFLS, fls: streamFLS, icat: streamICAT, launcher: nil)
+let scanBackend = ImageQuickRecovery(tools: streamingTools)
+var earlyRecords: [DeletedFileCandidate] = []
+var searchFinished = false
+let searching = Task {
+    defer { searchFinished = true }
+    return try await scanBackend.scan(imageURL: streamingImage, onCandidates: { earlyRecords += $0 })
+}
+for _ in 0..<300 {
+    if !earlyRecords.isEmpty || searchFinished { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(earlyRecords.count == 1 && !searchFinished,
+      "stream: C printf без fflush публикует находку ДО завершения fls")
+check(!FileManager.default.fileExists(atPath: streamGate.path), "stream: скан действительно удерживается gate")
+let savingBackend = ImageQuickRecovery(tools: streamingTools)
+var savedBeforeEnd = 0
+let earlySaved = try await savingBackend.recoverDetailed(
+    imageURL: streamingImage, outputFolderURL: streamOut, candidates: earlyRecords,
+    onRecovered: { _, _ in savedBeforeEnd += 1 }
+)
+check(earlySaved.count == 1 && savedBeforeEnd == 1 && !searchFinished,
+      "stream: icat завершился и сообщил файл, пока fls продолжает поиск")
+let earlySavedData = try Data(contentsOf: earlySaved[0].url)
+check(earlySavedData == Data("RECOVERED\n".utf8),
+      "stream: параллельное извлечение побайтно корректно")
+
+setenv("RECOVERYAPP_STREAM_ICAT_GATE", saveGate.path, 1)
+setenv("RECOVERYAPP_STREAM_ICAT_STARTED", saveStarted.path, 1)
+let cancelledSaver = ImageQuickRecovery(tools: streamingTools)
+let saving = Task {
+    try await cancelledSaver.recoverDetailed(imageURL: streamingImage, outputFolderURL: streamOut,
+                                            candidates: earlyRecords)
+}
+for _ in 0..<300 {
+    if FileManager.default.fileExists(atPath: saveStarted.path) { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(FileManager.default.fileExists(atPath: saveStarted.path), "stream: второй icat запущен")
+cancelledSaver.cancel()
+do { _ = try await saving.value; check(false, "stream: сохранение должно отмениться") }
+catch let error as DeletedFilesError { check(error == .cancelled, "stream: отменён только save worker") }
+check(!searchFinished && earlyRecords.count == 1, "stream: отмена сохранения не завершила поиск")
+scanBackend.cancel()
+do { _ = try await searching.value; check(false, "stream: поиск должен отмениться") }
+catch let error as DeletedFilesError { check(error == .cancelled, "stream: scan worker отменён независимо") }
+check(FileManager.default.fileExists(atPath: earlySaved[0].url.path), "stream: завершённый файл сохранён после двух отмен")
+let cancelledSaveFiles = try FileManager.default.contentsOfDirectory(atPath: streamOut.path)
+check(!cancelledSaveFiles.contains { $0.hasSuffix(".partial") },
+      "stream: отменённый icat не оставил .partial")
+unsetenv("RECOVERYAPP_STREAM_ICAT_GATE")
+unsetenv("RECOVERYAPP_STREAM_ICAT_STARTED")
+
+// The other direction: stop search while an extraction is still running.
+let secondScanner = ImageQuickRecovery(tools: streamingTools)
+var secondRecords: [DeletedFileCandidate] = []
+let secondSearching = Task {
+    try await secondScanner.scan(imageURL: streamingImage, onCandidates: { secondRecords += $0 })
+}
+for _ in 0..<300 {
+    if !secondRecords.isEmpty { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+try FileManager.default.removeItem(at: saveStarted)
+setenv("RECOVERYAPP_STREAM_ICAT_GATE", saveGate.path, 1)
+setenv("RECOVERYAPP_STREAM_ICAT_STARTED", saveStarted.path, 1)
+let secondSaver = ImageQuickRecovery(tools: streamingTools)
+var secondSaveFinished = false
+let secondSaving = Task {
+    defer { secondSaveFinished = true }
+    return try await secondSaver.recoverDetailed(imageURL: streamingImage,
+                                                outputFolderURL: streamOut, candidates: secondRecords)
+}
+for _ in 0..<300 {
+    if FileManager.default.fileExists(atPath: saveStarted.path) { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(!secondRecords.isEmpty && FileManager.default.fileExists(atPath: saveStarted.path),
+      "stream: поиск и второй save worker одновременно активны")
+secondScanner.cancel()
+do { _ = try await secondSearching.value; check(false, "stream: второй scan должен отмениться") }
+catch let error as DeletedFilesError { check(error == .cancelled, "stream: поиск отменён при активном сохранении") }
+check(!secondSaveFinished, "stream: отмена поиска не отменила активное сохранение")
+try Data().write(to: saveGate)
+let independentlySaved = try await secondSaving.value
+check(independentlySaved.count == 1, "stream: save успешно закончился после отмены scan")
+unsetenv("RECOVERYAPP_STREAM_ICAT_GATE")
+unsetenv("RECOVERYAPP_STREAM_ICAT_STARTED")
+
+// Production ViewModel/Executor, with only CLI tool paths replaced by fixtures.
+setenv("RECOVERYAPP_FLS_PATH", streamFLS.path, 1)
+setenv("RECOVERYAPP_ICAT_PATH", streamICAT.path, 1)
+setenv("RECOVERYAPP_MMLS_PATH", streamFLS.path, 1)
+setenv("RECOVERYAPP_TOOL_LAUNCHER_PATH", "/usr/bin/env", 1)
+let liveModel = DeletedFilesViewModel(environment: [:], driveSnapshot: { [] })
+liveModel.selectImage(streamingImage)
+let liveOut = streamingRoot.appendingPathComponent("vm-out", isDirectory: true)
+try FileManager.default.createDirectory(at: liveOut, withIntermediateDirectories: true)
+liveModel.selectOutputFolder(liveOut)
+liveModel.scan()
+for _ in 0..<300 {
+    if !liveModel.candidates.isEmpty { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(liveModel.isQuickScanRunning && liveModel.candidates.count == 1,
+      "stream VM: находка видна во время реального процесса scan")
+check(liveModel.selection.isEmpty, "stream VM: новая находка не выбрана молча")
+check(liveModel.activityTitle != "Получаем доступ к накопителю…", "stream VM: этап не застрял на авторизации")
+liveModel.selectImage(root.appendingPathComponent("other.img"))
+check(liveModel.imageURL == streamingImage, "stream VM: источник нельзя заменить во время чтения")
+liveModel.selectAllVisible()
+check(liveModel.canRecover && liveModel.isBusy, "stream VM: сохранение доступно при активном поиске")
+liveModel.setSizeThresholds(minimumText: "abc", maximumText: "")
+liveModel.recoverSelected()
+check(!liveModel.isQuickRecoveryRunning, "stream VM: ошибка фильтра блокирует save и во время scan")
+liveModel.resetFilters()
+liveModel.recoverSelected()
+for _ in 0..<300 {
+    if !liveModel.isQuickRecoveryRunning { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(liveModel.isQuickScanRunning && liveModel.quickSavedResults.count == 1,
+      "stream VM: сохранение закончилось, поиск продолжается")
+check(liveModel.selection.isEmpty && liveModel.selectableCandidateIDs.isEmpty,
+      "stream VM: сохранённый файл исключён из выбора")
+check(liveModel.savingStatus(for: liveModel.candidates[0]) == "Сохранён",
+      "stream VM: статус сохранения отражён у находки")
+liveModel.selectAllVisible()
+liveModel.recoverSelected()
+check(!liveModel.isQuickRecoveryRunning, "stream VM: сохранённое не запускается повторно")
+let liveSavedFiles = try FileManager.default.contentsOfDirectory(atPath: liveOut.path)
+check(liveSavedFiles.count == 1,
+      "stream VM: повторная кнопка не создала дубликат результата")
+try Data().write(to: streamGate)
+for _ in 0..<300 {
+    if !liveModel.isQuickScanRunning { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(!liveModel.isQuickScanRunning && liveModel.candidates.count == 2,
+      "stream VM: окончание поиска добавило позднюю находку без дублей")
+check(liveModel.quickSavedResults.count == 1 && liveModel.selection.isEmpty,
+      "stream VM: завершение scan не потеряло результат и не выбрало новые файлы")
+liveModel.selectCategory(.video)
+liveModel.selectAllVisible()
+check(liveModel.visibleSelectedCandidates.map(\.inode) == ["7"],
+      "stream VM: сохранение учитывает текущие фильтры")
+liveModel.recoverSelected()
+for _ in 0..<300 {
+    if !liveModel.isQuickRecoveryRunning { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(liveModel.quickSavedResults.count == 2 && liveModel.quickSavedSummary?.savedCount == 2,
+      "stream VM: несколько групп суммируются без потери первого результата")
+
+try FileManager.default.removeItem(at: streamGate)
+let stoppedModel = DeletedFilesViewModel(environment: [:], driveSnapshot: { [] })
+stoppedModel.selectImage(streamingImage)
+stoppedModel.selectOutputFolder(streamOut)
+stoppedModel.scan()
+for _ in 0..<300 {
+    if !stoppedModel.candidates.isEmpty { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+stoppedModel.cancelQuickScan()
+for _ in 0..<300 {
+    if !stoppedModel.isQuickScanRunning { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(stoppedModel.candidates.count == 1 && stoppedModel.quickScanNotice != nil,
+      "stream VM: остановка поиска оставляет уже найденные записи")
+stoppedModel.selectAllVisible()
+check(stoppedModel.canRecover, "stream VM: после остановки найденное доступно для сохранения")
+stoppedModel.recoverSelected()
+for _ in 0..<300 {
+    if !stoppedModel.isQuickRecoveryRunning { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(stoppedModel.quickSavedResults.count == 1, "stream VM: сохранение работает после отмены поиска")
+
+setenv("RECOVERYAPP_STREAM_FAIL_SECOND", "1", 1)
+let partialOut = streamingRoot.appendingPathComponent("partial-success", isDirectory: true)
+try FileManager.default.createDirectory(at: partialOut, withIntermediateDirectories: true)
+let later = DeletedFileCandidate(id: "late", path: "LATE.MOV", inode: "7", partitionOffset: 0, filesystemType: "fat32")
+var partialResults: [RecoveredFileResult] = []
+do {
+    _ = try await ImageQuickRecovery(tools: streamingTools).recoverDetailed(
+        imageURL: streamingImage, outputFolderURL: partialOut, candidates: earlyRecords + [later],
+        onRecovered: { _, result in partialResults.append(result) }
+    )
+    check(false, "stream: вторая ошибка icat должна прервать группу")
+} catch let error as DeletedFilesError {
+    check(error == .toolFailed("icat", 42), "stream: ошибка второго icat не маскируется успехом")
+}
+check(partialResults.count == 1 && FileManager.default.fileExists(atPath: partialResults[0].url.path),
+      "stream: callback первого готового файла сохранён при ошибке второго")
+let partialSuccessFiles = try FileManager.default.contentsOfDirectory(atPath: partialOut.path)
+check(!partialSuccessFiles.contains { $0.hasSuffix(".partial") },
+      "stream: ошибка удаляет только незавершённый текущий файл")
+let preCancelled = ImageQuickRecovery(tools: streamingTools)
+preCancelled.cancel()
+do { _ = try await preCancelled.scan(imageURL: streamingImage); check(false, "stream: ранний cancel") }
+catch let error as DeletedFilesError { check(error == .cancelled, "stream: cancel до запуска не теряется") }
+
+// Search may finish while a slow save is still waiting; the UI must stop
+// saying that it is searching, and a save cancellation must not claim success.
+unsetenv("RECOVERYAPP_STREAM_FAIL_SECOND")
+try FileManager.default.removeItem(at: saveGate)
+setenv("RECOVERYAPP_STREAM_ICAT_GATE", saveGate.path, 1)
+let overlapModel = DeletedFilesViewModel(environment: [:], driveSnapshot: { [] })
+overlapModel.selectImage(streamingImage)
+overlapModel.selectOutputFolder(streamOut)
+overlapModel.scan()
+for _ in 0..<300 {
+    if !overlapModel.candidates.isEmpty { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+overlapModel.selectAllVisible()
+overlapModel.recoverSelected()
+for _ in 0..<100 {
+    if overlapModel.isQuickRecoveryRunning { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+try Data().write(to: streamGate)
+for _ in 0..<300 {
+    if !overlapModel.isQuickScanRunning { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(!overlapModel.isQuickScanRunning && overlapModel.isQuickRecoveryRunning,
+      "stream VM: поиск закончился во время активного сохранения")
+check(overlapModel.state == .recovering && overlapModel.activityTitle == "Сохраняем выбранные файлы…",
+      "stream VM: после завершения поиска показан правильный текущий этап")
+overlapModel.cancelQuickRecovery()
+for _ in 0..<300 {
+    if !overlapModel.isQuickRecoveryRunning { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(overlapModel.quickSavedResults.isEmpty, "stream VM: отменённый до записи файл не помечен сохранённым")
+check(overlapModel.quickRecoveryFailure?.title == "Сохранение остановлено",
+      "stream VM: отдельное сообщение об отмене сохранения")
+check(overlapModel.quickRecoveryFailure?.message.contains("Уже найденные файлы сохранены") == false,
+      "stream VM: сообщение не обещает сохранение одних лишь находок")
+check(overlapModel.candidates.count == 2 && overlapModel.state == .scanFinished,
+      "stream VM: после отмены save можно работать с найденными записями")
+liveModel.state = .failed(UserFacingFailure.make(from: DeletedFilesError.sourceChanged))
+check(liveModel.showsQuickSavedSummary && liveModel.quickSavedSummary?.savedCount == 2,
+      "stream VM: уже сохранённые результаты доступны даже после ошибки источника")
+for key in streamEnvironmentKeys {
+    if let value = streamOldEnvironment[key] { setenv(key, value, 1) } else { unsetenv(key) }
+}
+
+// A stale .partial is user data too: never truncate it, even if the final
+// filename is free. This also protects simultaneous clients of the backend.
+unsetenv("RECOVERYAPP_STREAM_ICAT_GATE")
+unsetenv("RECOVERYAPP_STREAM_FAIL_SECOND")
+let safePartialOut = streamingRoot.appendingPathComponent("owned-partials", isDirectory: true)
+try FileManager.default.createDirectory(at: safePartialOut, withIntermediateDirectories: true)
+let existingPartial = safePartialOut.appendingPathComponent(earlyRecords[0].displayName + ".partial")
+try Data("EXISTING-USER-PARTIAL".utf8).write(to: existingPartial)
+let safelySaved = try await ImageQuickRecovery(tools: streamingTools).recoverDetailed(
+    imageURL: streamingImage, outputFolderURL: safePartialOut, candidates: earlyRecords
+)
+let preservedPartialData = try Data(contentsOf: existingPartial)
+check(preservedPartialData == Data("EXISTING-USER-PARTIAL".utf8),
+      "stream: существующий partial не перезаписан и не удалён")
+check(safelySaved[0].url.lastPathComponent != earlyRecords[0].displayName,
+      "stream: занятый partial резервирует другое имя результата")
+let safeResultData = try Data(contentsOf: safelySaved[0].url)
+check(safeResultData == Data("RECOVERED\n".utf8), "stream: результат под новым именем корректен")
+check(FileManager.default.fileExists(atPath: existingPartial.path), "stream: чужой partial остался на месте после успеха")
+
 print("PASS: \(checkCount) domain checks")

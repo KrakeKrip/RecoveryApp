@@ -32,15 +32,44 @@ struct DeletedFilesView: View {
                     activityPanel
                     HStack {
                         Spacer()
-                        Button("Остановить", role: .destructive) { model.cancel() }
+                        if model.isQuickScanRunning {
+                            Button("Остановить поиск", role: .destructive) { model.cancelQuickScan() }
+                        } else if model.state == .deepRecovering {
+                            Button("Остановить", role: .destructive) { model.cancel() }
+                        }
                     }
-                } else if model.hasTerminalResult {
+                }
+                if model.hasTerminalResult {
                     resultCard
                     Button("Начать новый поиск") { model.scan() }
                         .disabled(!model.canScan || model.outputFolderURL == nil)
-                } else if model.state == .scanFinished {
+                }
+                if let summary = model.quickSavedSummary, model.showsQuickSavedSummary {
+                    OperationResultCard(
+                        tone: summary.hasSizeProblems ? .warning : .success,
+                        title: "Сохранено файлов: \(summary.savedCount)",
+                        message: summary.message,
+                        path: summary.folder.path,
+                        actionTitle: "Открыть папку"
+                    ) { NSWorkspace.shared.open(summary.folder) }
+                }
+                if model.isQuickRecoveryRunning {
+                    HStack {
+                        ProgressView().controlSize(.small)
+                        Text("Сохраняем выбранное · осталось в текущей группе: \(model.savingIDs.count)")
+                            .font(.caption)
+                        Spacer()
+                        Button("Остановить сохранение", role: .destructive) { model.cancelQuickRecovery() }
+                    }
+                }
+                if let failure = model.quickRecoveryFailure {
+                    OperationResultCard(tone: .warning, title: failure.title,
+                        message: failure.message + " Уже сохранённые файлы остаются в папке результата.")
+                }
+                if model.isQuickScanRunning || model.state == .scanFinished
+                    || model.isQuickRecoveryRunning || !model.candidates.isEmpty {
                     scanResults
-                } else {
+                } else if !model.isBusy && !model.hasTerminalResult {
                     searchActions
                 }
 
@@ -54,6 +83,7 @@ struct DeletedFilesView: View {
         }
         .navigationTitle("Удалённые файлы")
         .task { await model.refreshDrives() }
+        .onDisappear { model.cancel() }
         .confirmationDialog(
             "Запустить глубокий поиск?",
             isPresented: $model.confirmingDeepRecovery,
@@ -212,9 +242,13 @@ struct DeletedFilesView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Поиск завершён · найдено файлов: \(model.candidates.count)")
+                    Text(model.isQuickScanRunning
+                         ? "Поиск продолжается · найдено файлов: \(model.candidates.count)"
+                         : "Найдено файлов: \(model.candidates.count)")
                         .font(.headline)
-                    Text("Отметьте, что сохранить. Найденные файлы могут быть повреждены.")
+                    Text(model.isQuickScanRunning
+                         ? "Можно сохранять найденное, пока поиск продолжается. Одновременное чтение может замедлить обе операции. Найденные файлы могут быть повреждены."
+                         : "Выберите ещё не сохранённые файлы. Сохранённые отмечены в списке; совпадение размеров не гарантирует целостность.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -224,14 +258,23 @@ struct DeletedFilesView: View {
             }
             .recoveryPanel()
 
+            if let notice = model.quickScanNotice {
+                Label(notice, systemImage: "exclamationmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             if model.candidates.isEmpty {
                 ContentUnavailableView {
-                    Label("Удалённых файлов не найдено", systemImage: "doc.text.magnifyingglass")
+                    Label(model.isQuickScanRunning ? "Находки появятся здесь" : "Удалённых файлов не найдено",
+                          systemImage: "doc.text.magnifyingglass")
                 } description: {
-                    Text("Попробуйте глубокий поиск фото и видео или другой накопитель.")
+                    Text(model.isQuickScanRunning
+                         ? "Ожидаем первые записи. Поиск потерянных файлов на большом накопителе может быть длительным."
+                         : "Попробуйте глубокий поиск фото и видео или другой накопитель.")
                 }
                 .frame(minHeight: 170)
-                deepSearchOption
+                if !model.isBusy { deepSearchOption }
             } else {
                 findingsFilterBar
                 if model.visibleCandidates.isEmpty {
@@ -250,7 +293,7 @@ struct DeletedFilesView: View {
                             .foregroundStyle(.secondary)
                         Spacer()
                         Button("Выбрать все показанные") { model.selectAllVisible() }
-                            .disabled(model.selection.count == model.visibleCandidates.count)
+                            .disabled(model.selectableCandidateIDs.isSubset(of: model.selection))
                         Button("Восстановить выбранные") { model.recoverSelected() }
                             .buttonStyle(.borderedProminent)
                             .disabled(!model.canRecover)
@@ -335,7 +378,7 @@ struct DeletedFilesView: View {
         }
         .padding(12)
         .background(.quaternary.opacity(0.65), in: RoundedRectangle(cornerRadius: 10))
-        .disabled(model.isBusy)
+        .disabled(!model.canEditFindings)
     }
 
     private var categoryPicker: some View {
@@ -421,7 +464,9 @@ struct DeletedFilesView: View {
     }
 
     private var findingsTable: some View {
-        Table(model.visibleCandidates, selection: $model.selection) {
+        Table(model.visibleCandidates, selection: Binding(
+            get: { model.selection }, set: { model.setSelection($0) }
+        )) {
             TableColumn("Файл") { item in
                 Text(item.displayName).lineLimit(1)
             }
@@ -434,6 +479,12 @@ struct DeletedFilesView: View {
                 } ?? "Неизвестен")
             }
             .width(110)
+            TableColumn("Сохранение") { item in
+                Text(model.savingStatus(for: item))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .width(180)
         }
         .frame(minHeight: 250)
     }

@@ -1,4 +1,5 @@
 @preconcurrency import Foundation
+import Darwin
 
 public struct DeletedFileCandidate: Identifiable, Hashable, Sendable {
     public let id: String
@@ -262,15 +263,10 @@ public struct ImageQuickToolSet: Sendable {
 /// через отдельные процессы `fls`, `mmls` и `icat`. Физические накопители и
 /// Authorization Services в этот класс не входят.
 public final class ImageQuickRecovery: @unchecked Sendable {
-    private struct ToolResult {
-        let status: Int32
-        let terminationReason: Process.TerminationReason
-        let output: String
-    }
+    private typealias ToolResult = QuickToolProcess.Result
 
     private let tools: ImageQuickToolSet
-    private let lock = NSLock()
-    private var process: Process?
+    private let processRunner = QuickToolProcess()
 
     public init(tools: ImageQuickToolSet) {
         self.tools = tools
@@ -278,12 +274,13 @@ public final class ImageQuickRecovery: @unchecked Sendable {
 
     public func scan(
         imageURL: URL,
+        onCandidates: @escaping QuickCandidatesHandler = { _ in },
         onOutput: @escaping @MainActor @Sendable (String) -> Void = { _ in }
     ) async throws -> [DeletedFileCandidate] {
         try Self.validateRegularImage(imageURL)
         return try await withTaskCancellationHandler {
             try await Task.detached(priority: .userInitiated) { [self] in
-                try scanBlocking(imageURL: imageURL, onOutput: onOutput)
+                try scanBlocking(imageURL: imageURL, onCandidates: onCandidates, onOutput: onOutput)
             }.value
         } onCancel: { [self] in
             cancel()
@@ -311,6 +308,7 @@ public final class ImageQuickRecovery: @unchecked Sendable {
         imageURL: URL,
         outputFolderURL: URL,
         candidates: [DeletedFileCandidate],
+        onRecovered: @escaping QuickRecoveredHandler = { _, _ in },
         onOutput: @escaping @MainActor @Sendable (String) -> Void = { _ in }
     ) async throws -> [RecoveredFileResult] {
         guard outputFolderURL.standardizedFileURL.path != imageURL.standardizedFileURL.path else {
@@ -325,6 +323,7 @@ public final class ImageQuickRecovery: @unchecked Sendable {
                     imageURL: imageURL,
                     outputFolderURL: outputFolderURL,
                     candidates: candidates,
+                    onRecovered: onRecovered,
                     onOutput: onOutput
                 )
             }.value
@@ -334,30 +333,19 @@ public final class ImageQuickRecovery: @unchecked Sendable {
     }
 
     public func cancel() {
-        lock.lock()
-        let runningProcess = process
-        lock.unlock()
-        guard let runningProcess, runningProcess.isRunning else { return }
-        let pid = runningProcess.processIdentifier
-        if kill(-pid, SIGTERM) != 0 { kill(pid, SIGTERM) }
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 1) {
-            if kill(-pid, 0) == 0 {
-                kill(-pid, SIGKILL)
-            } else if kill(pid, 0) == 0 {
-                kill(pid, SIGKILL)
-            }
-        }
+        processRunner.cancel()
     }
 
     // MARK: - Алгоритм
 
     private func scanBlocking(
         imageURL: URL,
+        onCandidates: @escaping QuickCandidatesHandler,
         onOutput: @escaping @MainActor @Sendable (String) -> Void
     ) throws -> [DeletedFileCandidate] {
         try checkCancelled()
         emit("Проверка файловой системы без таблицы разделов…\n", onOutput)
-        if let direct = try scanFileSystem(imageURL: imageURL, offset: 0) {
+        if let direct = try scanFileSystem(imageURL: imageURL, offset: 0, onCandidates: onCandidates) {
             return direct
         }
 
@@ -373,7 +361,7 @@ public final class ImageQuickRecovery: @unchecked Sendable {
         for offset in offsets {
             try checkCancelled()
             emit("Проверка раздела со смещением \(offset) секторов…\n", onOutput)
-            if let result = try scanFileSystem(imageURL: imageURL, offset: offset) {
+            if let result = try scanFileSystem(imageURL: imageURL, offset: offset, onCandidates: onCandidates) {
                 recognizedFileSystem = true
                 found.append(contentsOf: result)
             }
@@ -384,7 +372,8 @@ public final class ImageQuickRecovery: @unchecked Sendable {
 
     private func scanFileSystem(
         imageURL: URL,
-        offset: Int64
+        offset: Int64,
+        onCandidates: @escaping QuickCandidatesHandler
     ) throws -> [DeletedFileCandidate]? {
         for filesystemType in ["fat32", "exfat"] {
             var arguments = ["-f", filesystemType, "-l", "-r", "-d", "-p"]
@@ -392,13 +381,15 @@ public final class ImageQuickRecovery: @unchecked Sendable {
                 arguments += ["-o", String(offset)]
             }
             arguments.append(imageURL.path)
-            let result = try runTool(tools.fls, arguments: arguments)
+            var stream = QuickCandidateStream(partitionOffset: offset, filesystemType: filesystemType)
+            let result = try runTool(tools.fls, arguments: arguments, onStdout: { data in
+                let batch = stream.consume(data)
+                if !batch.isEmpty { QuickCallbacks.deliver { onCandidates(batch) } }
+            })
             if result.status == 0 {
-                return SleuthKitOutputParser.deletedFiles(
-                    from: result.output,
-                    partitionOffset: offset,
-                    filesystemType: filesystemType
-                )
+                let batch = stream.consume(Data(), isFinal: true)
+                if !batch.isEmpty { QuickCallbacks.deliver { onCandidates(batch) } }
+                return stream.candidates
             }
         }
         return nil
@@ -408,6 +399,7 @@ public final class ImageQuickRecovery: @unchecked Sendable {
         imageURL: URL,
         outputFolderURL: URL,
         candidates: [DeletedFileCandidate],
+        onRecovered: @escaping QuickRecoveredHandler,
         onOutput: @escaping @MainActor @Sendable (String) -> Void
     ) throws -> [RecoveredFileResult] {
         var results: [RecoveredFileResult] = []
@@ -418,8 +410,7 @@ public final class ImageQuickRecovery: @unchecked Sendable {
                 folder: outputFolderURL
             )
             let partialURL = resultURL.appendingPathExtension("partial")
-            FileManager.default.createFile(atPath: partialURL.path, contents: nil)
-            let outputHandle = try FileHandle(forWritingTo: partialURL)
+            let outputHandle = try Self.createPartialFile(at: partialURL)
             defer { try? outputHandle.close() }
 
             emit("[\(index + 1)/\(candidates.count)] \(candidate.path)\n", onOutput)
@@ -462,12 +453,14 @@ public final class ImageQuickRecovery: @unchecked Sendable {
                     expectedSize: candidate.expectedSize,
                     actualSize: actualSize
                 )
-                results.append(RecoveredFileResult(
+                let recovered = RecoveredFileResult(
                     url: resultURL,
                     expectedSize: candidate.expectedSize,
                     actualSize: actualSize,
                     status: status
-                ))
+                )
+                results.append(recovered)
+                QuickCallbacks.deliver { onRecovered(candidate, recovered) }
             } catch {
                 try? FileManager.default.removeItem(at: partialURL)
                 throw error
@@ -481,56 +474,17 @@ public final class ImageQuickRecovery: @unchecked Sendable {
     private func runTool(
         _ tool: URL,
         arguments: [String],
-        standardOutput: FileHandle? = nil
+        standardOutput: FileHandle? = nil,
+        onStdout: ((Data) -> Void)? = nil
     ) throws -> ToolResult {
-        let launchedProcess = Process()
-        let combinedPipe = Pipe()
-        let errorPipe = Pipe()
-        if let launcher = tools.launcher {
-            launchedProcess.executableURL = launcher
-            launchedProcess.arguments = [tool.path] + arguments
-        } else {
-            launchedProcess.executableURL = tool
-            launchedProcess.arguments = arguments
-        }
-        if let standardOutput {
-            launchedProcess.standardOutput = standardOutput
-            launchedProcess.standardError = errorPipe
-        } else {
-            launchedProcess.standardOutput = combinedPipe
-            launchedProcess.standardError = combinedPipe
-        }
-        launchedProcess.standardInput = FileHandle.nullDevice
-
-        lock.lock()
-        process = launchedProcess
-        lock.unlock()
-        defer {
-            lock.lock()
-            process = nil
-            lock.unlock()
-        }
-
-        do {
-            try launchedProcess.run()
-        } catch {
-            throw DeletedFilesError.launchFailed(error.localizedDescription)
-        }
-        // Drain the pipe while the child is still running. Waiting first can
-        // deadlock when fls produces more output than the pipe buffer holds.
-        let data = standardOutput == nil
-            ? combinedPipe.fileHandleForReading.readDataToEndOfFile()
-            : errorPipe.fileHandleForReading.readDataToEndOfFile()
-        launchedProcess.waitUntilExit()
-        return ToolResult(
-            status: launchedProcess.terminationStatus,
-            terminationReason: launchedProcess.terminationReason,
-            output: String(decoding: data, as: UTF8.self)
+        try processRunner.run(
+            tool, launcher: tools.launcher, arguments: arguments,
+            standardOutput: standardOutput, onStdout: onStdout
         )
     }
 
     private func checkCancelled() throws {
-        if Task.isCancelled { throw DeletedFilesError.cancelled }
+        try processRunner.checkCancelled()
     }
 
     private func emit(
@@ -546,6 +500,21 @@ public final class ImageQuickRecovery: @unchecked Sendable {
     }
 
     // MARK: - Общие проверки и безопасные имена
+
+    static func createPartialFile(at url: URL) throws -> FileHandle {
+        // A leftover file or another window/process must never be truncated.
+        let descriptor = Darwin.open(url.path, O_WRONLY | O_CREAT | O_EXCL, mode_t(0o600))
+        guard descriptor >= 0 else {
+            switch errno {
+            case ENOSPC: throw DeletedFilesError.outputSpaceExhausted
+            case ENOENT: throw DeletedFilesError.outputFolderMissing
+            case EACCES, EPERM: throw DeletedFilesError.outputFolderNotWritable
+            default:
+                throw DeletedFilesError.launchFailed("Не удалось безопасно создать временный файл. Повторите сохранение (код \(errno)).")
+            }
+        }
+        return FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+    }
 
     public static func validateRegularImage(
         _ url: URL,
@@ -609,7 +578,8 @@ public final class ImageQuickRecovery: @unchecked Sendable {
         let stem = (original as NSString).deletingPathExtension
         var candidate = folder.appendingPathComponent(original)
         var index = 2
-        while fileManager.fileExists(atPath: candidate.path) {
+        while fileManager.fileExists(atPath: candidate.path)
+            || fileManager.fileExists(atPath: candidate.appendingPathExtension("partial").path) {
             let name = ext.isEmpty ? "\(stem)_\(index)" : "\(stem)_\(index).\(ext)"
             candidate = folder.appendingPathComponent(name)
             index += 1
