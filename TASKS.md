@@ -1,5 +1,14 @@
 # Очередь задач RecoveryApp
 
+## Внеочередное исправление 2026-10-18
+
+`FIX-SONOMA-NAVIGATION` — REVIEW: явный путь переходов главного экрана,
+кликабельная площадь карточек. Локально 321 domain checks, CLI, свежая .app,
+подпись и GUI переходы/Back/повторные входы — PASS; macOS 14.5 ожидает
+подтверждения друга. Владелец разрешил main и Latest до этой приёмки.
+Задание: [tasks/FIX-SONOMA-NAVIGATION.md](tasks/FIX-SONOMA-NAVIGATION.md).
+Отчёт: [reports/FIX-SONOMA-NAVIGATION.md](reports/FIX-SONOMA-NAVIGATION.md).
+
 Статусы: `TODO`, `IN PROGRESS`, `REVIEW`, `DONE`, `BLOCKED`.
 
 | Задача | Статус | Ветка | Назначение |

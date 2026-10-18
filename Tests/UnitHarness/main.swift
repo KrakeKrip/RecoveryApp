@@ -15,6 +15,34 @@ private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
 check(RecoveryFeature.videoRepair.title == "Повреждённые видео", "название раздела видео")
 check(RecoveryFeature.deletedFiles.title == "Удалённые файлы", "название раздела файлов")
 
+// The same state is used by home-card actions, NavigationStack and native Back.
+let navigation = AppModel(environment: [:])
+check(navigation.selectedFeature == nil, "новое окно не выбирает раздел")
+check(navigation.navigationPath.isEmpty, "главному экрану соответствует пустой путь")
+navigation.selectedFeature = .videoRepair
+check(navigation.navigationPath == [.videoRepair], "карточка видео задаёт путь видео")
+navigation.navigationPath = []
+check(navigation.selectedFeature == nil, "Назад очищает выбор видео")
+navigation.selectedFeature = .deletedFiles
+check(navigation.navigationPath == [.deletedFiles], "карточка файлов задаёт путь файлов")
+navigation.navigationPath = []
+check(navigation.selectedFeature == nil, "Назад очищает выбор файлов")
+navigation.selectedFeature = .videoRepair
+navigation.selectedFeature = .videoRepair
+check(navigation.navigationPath == [.videoRepair], "повторный выбор не накапливает экраны")
+navigation.selectedFeature = .deletedFiles
+check(navigation.navigationPath == [.deletedFiles], "смена раздела заменяет путь")
+navigation.navigationPath = [.videoRepair]
+check(navigation.selectedFeature == .videoRepair, "путь обновляет выбранный раздел")
+navigation.selectedFeature = nil
+check(navigation.navigationPath.isEmpty, "сброс выбора возвращает главный экран")
+check(AppModel(environment: ["RECOVERYAPP_TEST_SCREEN": "video"]).navigationPath == [.videoRepair],
+      "тестовый вход видео использует общий путь")
+check(AppModel(environment: ["RECOVERYAPP_TEST_SCREEN": "deleted"]).navigationPath == [.deletedFiles],
+      "тестовый вход файлов использует общий путь")
+check(AppModel(environment: ["RECOVERYAPP_TEST_SCREEN": "unknown"]).navigationPath.isEmpty,
+      "неизвестный тестовый экран оставляет главный экран")
+
 let root = FileManager.default.temporaryDirectory
     .appendingPathComponent("RecoveryAppTests-\(UUID().uuidString)", isDirectory: true)
 try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

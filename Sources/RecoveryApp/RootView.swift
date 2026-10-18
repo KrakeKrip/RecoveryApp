@@ -4,7 +4,7 @@ struct RootView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $model.navigationPath) {
             ZStack {
                 LinearGradient(
                     colors: [RecoveryPalette.plum.opacity(0.20), Color.clear],
@@ -48,10 +48,11 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .padding(36)
             }
-            .navigationDestination(item: $model.selectedFeature) { feature in
-                if feature == .videoRepair {
+            .navigationDestination(for: RecoveryFeature.self) { feature in
+                switch feature {
+                case .videoRepair:
                     VideoRepairView()
-                } else {
+                case .deletedFiles:
                     DeletedFilesView()
                 }
             }
@@ -95,6 +96,7 @@ private struct FeatureCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 224)
             .recoveryPanel()
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityHint("Открыть раздел")
