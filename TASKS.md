@@ -13,6 +13,7 @@
 
 | Задача | Статус | Ветка | Назначение |
 |---|---|---|---|
+| TASK-018 | DONE | `codex/task-018-deep-search-action` | Крупный постоянный deep-переход; подтверждение остановки quick и ожидание cleanup; synthetic GUI, без реальных дисков |
 | TASK-017 | DONE | `codex/task-017-live-quick-recovery` | Потоковые находки quick, независимое сохранение во время поиска и отмена; 373 checks + CLI/helper/FD/synthetic GUI; физическая одновременная приёмка и 14.5 для нового режима пока не проверены |
 | TASK-001 | DONE | `glm/task-001-cli-foundation` | Общий RecoveryCore и минимальный CLI |
 | TASK-002 | DONE | `glm/task-002-sleuthkit-fd` | Пересборка Sleuth Kit и регрессия унаследованного read-only FD |

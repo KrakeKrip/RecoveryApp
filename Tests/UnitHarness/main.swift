@@ -2036,6 +2036,8 @@ for _ in 0..<300 {
 }
 check(liveModel.isQuickScanRunning && liveModel.candidates.count == 1,
       "stream VM: находка видна во время реального процесса scan")
+check(liveModel.canRequestDeepRecovery && !liveModel.canDeepRecover,
+      "deep UI: запрос переключения доступен при quick, прямой запуск нет")
 check(liveModel.selection.isEmpty, "stream VM: новая находка не выбрана молча")
 check(liveModel.activityTitle != "Получаем доступ к накопителю…", "stream VM: этап не застрял на авторизации")
 liveModel.selectImage(root.appendingPathComponent("other.img"))
@@ -2200,4 +2202,39 @@ let safeResultData = try Data(contentsOf: safelySaved[0].url)
 check(safeResultData == Data("RECOVERED\n".utf8), "stream: результат под новым именем корректен")
 check(FileManager.default.fileExists(atPath: existingPartial.path), "stream: чужой partial остался на месте после успеха")
 
+// Controlled quick tool; deep fails safely before a tool launch when absent.
+setenv("RECOVERYAPP_FLS_PATH", streamFLS.path, 1)
+setenv("RECOVERYAPP_ICAT_PATH", streamICAT.path, 1)
+setenv("RECOVERYAPP_MMLS_PATH", streamFLS.path, 1)
+setenv("RECOVERYAPP_TOOL_LAUNCHER_PATH", "/usr/bin/env", 1)
+let transitionGate = streamingRoot.appendingPathComponent("deep-transition-gate")
+setenv("RECOVERYAPP_STREAM_GATE", transitionGate.path, 1)
+let transitionModel = DeletedFilesViewModel(environment: [:], driveSnapshot: { [] })
+transitionModel.selectImage(streamingImage)
+transitionModel.selectOutputFolder(liveOut)
+transitionModel.scan()
+for _ in 0..<300 {
+    if !transitionModel.candidates.isEmpty { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(transitionModel.isQuickScanRunning, "deep UI: quick действительно работает до подтверждения")
+transitionModel.startDeepRecoveryFromQuickSearch()
+check(transitionModel.isSwitchingToDeepRecovery && !transitionModel.canRequestDeepRecovery,
+      "deep UI: повторное подтверждение заблокировано во время остановки")
+transitionModel.selectAllVisible()
+check(!transitionModel.canRecover, "deep UI: сохранение недоступно во время переключения")
+transitionModel.recoverSelected()
+check(!transitionModel.isQuickRecoveryRunning, "deep UI: прямой вызов save во время перехода заблокирован")
+for _ in 0..<300 {
+    if !transitionModel.isSwitchingToDeepRecovery { break }
+    try await Task.sleep(for: .milliseconds(10))
+}
+check(!transitionModel.isQuickScanRunning && !transitionModel.isSwitchingToDeepRecovery,
+      "deep UI: отменённый quick завершён до deep")
+check(transitionModel.log.contains("Запуск глубокого сигнатурного поиска"),
+      "deep UI: deep запрошен после остановки quick")
+transitionModel.cancel()
+for key in ["RECOVERYAPP_FLS_PATH", "RECOVERYAPP_ICAT_PATH", "RECOVERYAPP_MMLS_PATH", "RECOVERYAPP_TOOL_LAUNCHER_PATH", "RECOVERYAPP_STREAM_GATE"] {
+    if let value = streamOldEnvironment[key] { setenv(key, value, 1) } else { unsetenv(key) }
+}
 print("PASS: \(checkCount) domain checks")

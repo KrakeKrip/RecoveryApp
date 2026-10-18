@@ -68,6 +68,8 @@ final class DeletedFilesViewModel: ObservableObject {
 
     private var task: Task<Void, Never>?
     private var recoveryTask: Task<Void, Never>?
+    private var deepTransitionTask: Task<Void, Never>?
+    @Published private(set) var isSwitchingToDeepRecovery = false
     private var scanGeneration = UUID()
     private var timer: Timer?
     private var processActivity: NSObjectProtocol?
@@ -125,7 +127,7 @@ final class DeletedFilesViewModel: ObservableObject {
     }
 
     var isBusy: Bool {
-        isQuickScanRunning || isQuickRecoveryRunning
+        isSwitchingToDeepRecovery || isQuickScanRunning || isQuickRecoveryRunning
             || state == .scanning || state == .recovering || state == .deepRecovering
     }
 
@@ -160,6 +162,29 @@ final class DeletedFilesViewModel: ObservableObject {
 
     var canDeepRecover: Bool {
         (selectedDrive != nil || imageURL != nil) && outputFolderURL != nil && !isBusy
+    }
+
+    var canRequestDeepRecovery: Bool {
+        (selectedDrive != nil || imageURL != nil) && outputFolderURL != nil
+            && !isQuickRecoveryRunning && !isSwitchingToDeepRecovery
+            && (!isBusy || isQuickScanRunning)
+    }
+
+    /// Не запускаем PhotoRec, пока отменённый quick task не завершил cleanup.
+    func startDeepRecoveryFromQuickSearch() {
+        guard canRequestDeepRecovery else { return }
+        guard isQuickScanRunning else { deepRecover(); return }
+        let pendingScan = task
+        isSwitchingToDeepRecovery = true
+        cancelQuickScan()
+        deepTransitionTask = Task { [weak self] in
+            await pendingScan?.value
+            guard let self else { return }
+            self.isSwitchingToDeepRecovery = false
+            guard !Task.isCancelled else { return }
+            if case .failed = self.state { return }
+            self.deepRecover()
+        }
     }
 
     var selectedDrive: ExternalDrive? {
@@ -199,6 +224,7 @@ final class DeletedFilesViewModel: ObservableObject {
     var canRecover: Bool {
         (selectedDrive != nil || imageURL != nil) && outputFolderURL != nil
             && !visibleSelectedCandidates.isEmpty && !isQuickRecoveryRunning
+            && !isSwitchingToDeepRecovery
             && (!isBusy || isQuickScanRunning) && !sizeFilterBlocksRecovery
     }
 
@@ -491,7 +517,8 @@ final class DeletedFilesViewModel: ObservableObject {
             log.append("Размерные пороги содержат ошибку: исправьте или сбросьте фильтры. Восстановление заблокировано.\n")
             return
         }
-        guard !isQuickRecoveryRunning && (!isBusy || isQuickScanRunning) else { return }
+        guard !isSwitchingToDeepRecovery && !isQuickRecoveryRunning
+            && (!isBusy || isQuickScanRunning) else { return }
         let chosen = visibleSelectedCandidates
         guard !chosen.isEmpty else {
             log.append("Нет видимых выбранных файлов для восстановления.\n")
@@ -651,6 +678,7 @@ final class DeletedFilesViewModel: ObservableObject {
     }
 
     func cancel() {
+        deepTransitionTask?.cancel()
         executor.cancel()
         task?.cancel()
         recoveryTask?.cancel()

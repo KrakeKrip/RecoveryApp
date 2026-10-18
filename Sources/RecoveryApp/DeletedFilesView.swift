@@ -28,6 +28,8 @@ struct DeletedFilesView: View {
                     .foregroundStyle(.green)
                     .padding(.horizontal, 2)
 
+                deepSearchOption
+
                 if model.isBusy {
                     activityPanel
                     HStack {
@@ -85,12 +87,14 @@ struct DeletedFilesView: View {
         .task { await model.refreshDrives() }
         .onDisappear { model.cancel() }
         .confirmationDialog(
-            "Запустить глубокий поиск?",
+            model.isQuickScanRunning ? "Перейти к глубокому поиску?" : "Запустить глубокий поиск?",
             isPresented: $model.confirmingDeepRecovery,
             titleVisibility: .visible
         ) {
-            Button("Запустить PhotoRec") { model.deepRecover() }
-            Button("Отмена", role: .cancel) {}
+            Button(model.isQuickScanRunning ? "Остановить быстрый и начать глубокий" : "Начать глубокий поиск") {
+                model.startDeepRecoveryFromQuickSearch()
+            }
+            Button(model.isQuickScanRunning ? "Продолжить быстрый поиск" : "Отмена", role: .cancel) {}
         } message: {
             Text(confirmationMessage)
         }
@@ -217,25 +221,36 @@ struct DeletedFilesView: View {
                 }
             }
             .recoveryPanel()
-            deepSearchOption
         }
     }
 
     private var deepSearchOption: some View {
+        VStack(alignment: .leading, spacing: 10) {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Не нашли нужное?")
+                Text("Глубокий поиск фото и видео")
                     .font(.subheadline.weight(.semibold))
                 Text("Глубокий поиск может найти фото и видео, но без исходных имён и папок.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            Button("Глубокий поиск") { model.confirmingDeepRecovery = true }
-                .buttonStyle(.bordered)
-                .disabled(!model.canDeepRecover)
+            Button { model.confirmingDeepRecovery = true } label: {
+                Label("Глубокий поиск", systemImage: "sparkle.magnifyingglass")
+                    .font(.headline)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+            }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(!model.canRequestDeepRecovery)
         }
-        .padding(.horizontal, 6)
+        if model.isQuickRecoveryRunning {
+            Text("Для глубокого поиска дождитесь сохранения выбранных файлов или остановите сохранение.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        }
+        .recoveryPanel()
     }
 
     private var scanResults: some View {
@@ -274,7 +289,6 @@ struct DeletedFilesView: View {
                          : "Попробуйте глубокий поиск фото и видео или другой накопитель.")
                 }
                 .frame(minHeight: 170)
-                if !model.isBusy { deepSearchOption }
             } else {
                 findingsFilterBar
                 if model.visibleCandidates.isEmpty {
@@ -537,10 +551,13 @@ struct DeletedFilesView: View {
 
     private var confirmationMessage: String {
         let capacityWarning = outputCapacityWarning.map { "\n\n⚠️ \($0)" } ?? ""
+        let quickWarning = model.isQuickScanRunning
+            ? "Рекомендуем сначала дождаться завершения быстрого поиска: он может сохранить исходные имена файлов. Если хотите перейти сейчас, быстрый поиск будет остановлен. Уже сохранённые файлы останутся в папке результата.\n\n"
+            : ""
         if model.usesPhysicalDrive {
-            return "macOS запросит разрешение на чтение выбранного накопителя. PhotoRec найдёт JPEG, PNG и MOV/MP4 и сохранит их только в указанную папку. Исходные имена и папки восстановить нельзя; могут попасться неудалённые файлы.\(capacityWarning)"
+            return quickWarning + "macOS может запросить разрешение на чтение выбранного накопителя. Глубокий поиск сохранит найденные JPEG, PNG и MOV/MP4 в отдельную папку. Исходные имена и папки восстановить нельзя; могут попасться неудалённые файлы.\(capacityWarning)"
         }
-        return "PhotoRec прочитает весь образ и сразу сохранит найденные JPEG, PNG и MOV/MP4 в отдельную папку. Исходные имена и структура каталогов будут потеряны; могут попасться и неудалённые файлы.\(capacityWarning)"
+        return quickWarning + "Глубокий поиск прочитает весь образ и сохранит найденные JPEG, PNG и MOV/MP4 в отдельную папку. Исходные имена и структура каталогов будут потеряны; могут попасться и неудалённые файлы.\(capacityWarning)"
     }
 
     private var outputCapacityWarning: String? {
